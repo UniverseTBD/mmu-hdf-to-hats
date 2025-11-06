@@ -1,5 +1,5 @@
 import os
-from datasets import DatasetBuilder, Dataset
+from datasets import DatasetBuilder, Dataset, IterableDataset
 from astropy.table import Table, hstack, vstack
 from astropy.coordinates import SkyCoord
 from astropy import units as u
@@ -258,3 +258,47 @@ def build_master_catalog(cats: list[DatasetBuilder], names: list[str], matching_
         master_cat[f"{name}_idx"] = master_cat[f"{name}_idx"].astype(int)
 
     return master_cat
+
+def crossmatch_streaming(
+    left: DatasetBuilder,
+    right: DatasetBuilder,
+    matching_radius: float = 1.0,
+    streaming: bool = True
+    ) -> IterableDataset:
+    """
+    Create a cross-matched streaming dataset.
+
+    This performs cross-matching on-the-fly as you iterate,
+    processing one HEALPix pixel at a time.
+    """
+    from .crossmatch import CrossMatchedExamplesIterable
+                                                
+    # Get iterables from builders
+    left_iterable = left._ex_iterable
+    right_iterable = right._ex_iterable
+
+    # Create cross-matched iterable
+    crossmatched_iterable = CrossMatchedExamplesIterable(
+        left_iterable,
+        right_iterable,
+        left,
+        right,
+        matching_radius
+    )
+
+    # Merge features
+    from datasets import Features
+    features = Features({**left.info.features, **right.info.features})
+    features['separation_arcsec'] = Value('float32')
+
+    # Create info
+    from datasets import DatasetInfo
+    info = DatasetInfo(
+        description=f"Cross-matched: {left.info.builder_name} x {right.info.builder_name}",
+        features=features
+    )
+
+    return IterableDataset(
+        ex_iterable=crossmatched_iterable, 
+        info=info
+    )
