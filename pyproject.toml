@@ -8,6 +8,7 @@ authors = [
     {name = "Multimodal Universe Collaboration"},
 ]
 description = "Large Astronomical Dataset for Foundation Models"
+requires-python = ">=3.12"
 readme = "README.md"
 license = {text = "MIT"}
 classifiers = [
