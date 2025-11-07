@@ -3,7 +3,7 @@ from mmu.utils import crossmatch_streaming
 
 # Load builders (not full datasets)
 hsc_builder = load_dataset_builder("data/hsc/", name="pdr3_dud_22.5")
-desi_builder = load_dataset_builder("data/desi", name="dr1_main")
+desi_builder = load_dataset_builder("data/desi/", name="edr_sv3")
 
 # Create streaming cross-matched dataset
 matched = crossmatch_streaming(
