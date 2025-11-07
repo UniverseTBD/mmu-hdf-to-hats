@@ -13,11 +13,14 @@ license = {text = "MIT"}
 classifiers = [
     "Programming Language :: Python :: 3",
 ]
-dynamic = ["dependencies", "version"]
-
-[tool.setuptools.dynamic]
-dependencies = { file = "requirements.txt" }
-optional-dependencies = {bench = { file = ["bench-requirements.txt"] }}
+dynamic = ["version"]
+dependencies = [
+    "astropy>=7.1.1",
+    "datasets>=4.4.1",
+    "h5py>=3.15.1",
+    "pandas>=2.3.3",
+    "tqdm>=4.67.1",
+]
 
 [tool.setuptools]
 packages = ["mmu"]
