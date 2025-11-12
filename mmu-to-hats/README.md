@@ -7,7 +7,8 @@ uv run python ./main.py \
   --input=https://users.flatironinstitute.org/~polymathic/data/MultimodalUniverse/v1/sdss/sdss/ \
   --output=./hats \
   --name=mmu_sdss_sdss \
-  --tmp-dir=./tmp
+  --tmp-dir=./tmp \
+  --max-rows=8192
 ```
 
 Run with `--help` to see all available options.
