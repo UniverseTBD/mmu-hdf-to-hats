@@ -1,10 +1,8 @@
 # for fast debugging run:
 #  python ./main.py   --input=https://users.flatironinstitute.org/~polymathic/data/MultimodalUniverse/v1/sdss/sdss/healpix=583/   --output=./hats   --name=mmu_sdss_sdss   --tmp-dir=./tmp   --max-rows=8192
 import argparse
-import cmd
 import math
-import os
-from typing import Callable
+from multiprocessing import cpu_count
 
 import h5py
 import numpy as np
@@ -24,13 +22,34 @@ def parse_args(argv):
         "-i", "--input", required=True, type=UPath, help="Input MMU dataset URI"
     )
     parser.add_argument(
-        "-o", "--output", required=True, type=UPath, help="Output HATS URI, [NAME] directory will be created inside it"
+        "-o",
+        "--output",
+        required=True,
+        type=UPath,
+        help="Output HATS URI, [NAME] directory will be created inside it",
     )
-    parser.add_argument("-r", "--max-rows", required=True, type=int, help="Max number of rows per HATS partition")
-    parser.add_argument("-t", "--tmp-dir", default=UPath("./tmp"), type=UPath, help="Temporary directory path")
+    parser.add_argument(
+        "-r",
+        "--max-rows",
+        required=True,
+        type=int,
+        help="Max number of rows per HATS partition",
+    )
+    parser.add_argument(
+        "-t",
+        "--tmp-dir",
+        default=UPath("./tmp"),
+        type=UPath,
+        help="Temporary directory path",
+    )
     parser.add_argument("--ra", default="ra", help="Right ascension column name")
     parser.add_argument("--dec", default="dec", help="Declination column name")
-    parser.add_argument("--first-n", default=None, type=int, help="First N files only, useful for debugging")
+    parser.add_argument(
+        "--first-n",
+        default=None,
+        type=int,
+        help="First N files only, useful for debugging",
+    )
     return parser.parse_args(argv)
 
 
@@ -101,7 +120,7 @@ def main(argv=None):
 
     input_files = input_file_list(cmd_args.input)
     if cmd_args.first_n is not None:
-        input_files = input_files[:cmd_args.first_n]
+        input_files = input_files[: cmd_args.first_n]
 
     import_args = (
         CollectionArguments(
@@ -120,10 +139,9 @@ def main(argv=None):
         .add_margin(margin_threshold=10.0, is_default=True)
     )
 
-    # with Client(n_workers=8, threads_per_worker=1) as client:
     # Debug mode: use 1 worker and 1 thread for easier debugging with breakpoints
-    # import ipdb; ipdb.set_trace(context=20)
-    with Client(n_workers=1, threads_per_worker=1, processes=False) as client:
+    # with Client(n_workers=1, threads_per_worker=1, processes=False) as client:
+    with Client(n_workers=min(8, cpu_count()), threads_per_worker=1) as client:
         print(f"Dask dashboard: {client.dashboard_link}")
         pipeline_with_client(import_args, client)
 
