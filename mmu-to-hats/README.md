@@ -28,9 +28,16 @@ uvx --from huggingface-hub hf upload-large-folder \
 
 Here is an example of the result dataset: https://huggingface.co/datasets/LSDB/mmu_sdss_sdss/tree/main
 
+# Transformation classes
+The idea is to have one transformation class for each catalog. This class should follow a given structure as outlined in the `catalog_functions.base_transformer.BaseTransformer` class and override its abstract methods.
+Note that we need to return a `pyarrow.Table` with exactly the same output as the <catalog>.py script. Read how to check this in the paragraph below. An example is provided for sdss, the relevant files are:
+ - catalog_functions/sdss_transformer.py
+ - verification/download_sdss.sh
+ - process_sdss_using_datasets.py
 
 # Verification of a tranformation class
 There is an example implemenation for sdss. For data generation do:
- - `uv run --with-requirements=verification/requirements.in python verification/process_using_datasets.py`, this will install datasets==3.6 and run the processing using datasets
+ - `uv run --with-requirements=verification/requirements.in python verification/process_sdss_using_datasets.py`, this will install datasets==3.6 and run the processing using datasets, no need to create another venv. Note that you'll need numpy>1 for the other jobs, so it is not feasible to install from `verification/requirements.in` in your working virtualenv
  - then run `python catalog_functions/sdss_transformer.py`
-- afterwards make sure that these two match: `python verification/compare.py`
+ - both of these jobs will create their own parquet files in the data folder
+- afterwards make sure that the created files match: `python verification/compare.py`
