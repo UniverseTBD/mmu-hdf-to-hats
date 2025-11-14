@@ -1,4 +1,7 @@
+# for fast debugging run:
+#  python ./main.py   --input=https://users.flatironinstitute.org/~polymathic/data/MultimodalUniverse/v1/sdss/sdss/healpix=583/   --output=./hats   --name=mmu_sdss_sdss   --tmp-dir=./tmp   --max-rows=8192
 import argparse
+import logging
 import math
 from multiprocessing import cpu_count
 
@@ -11,6 +14,14 @@ from hats_import.catalog.file_readers import InputReader
 from hats_import.pipeline import pipeline_with_client
 from upath import UPath
 
+from catalog_functions.sdss_transformer import SDSSTransformer
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 def parse_args(argv):
     parser = argparse.ArgumentParser("Convert MMU dataset to HATS")
@@ -47,6 +58,11 @@ def parse_args(argv):
         type=int,
         help="First N files only, useful for debugging",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug mode (single worker, single thread, no separate processes)",
+    )
     return parser.parse_args(argv)
 
 
@@ -66,9 +82,10 @@ def np_to_pyarrow_array(array: np.ndarray) -> pa.Array:
 
 
 class MMUReader(InputReader):
-    def __init__(self, chunk_mb: float):
+    def __init__(self, chunk_mb: float, transform_klass):
         super().__init__()
         self.chunk_bytes = chunk_mb * 1024 * 1024
+        self.transform_klass = transform_klass
 
     def _num_chunks(
         self, file_obj, h5_file: h5py.File, columns: list[str] | None
@@ -87,12 +104,20 @@ class MMUReader(InputReader):
             n_rows = h5_file[read_columns[0]].shape[0]
             chunk_size = max(1, n_rows // num_chunks)
             for i in range(0, n_rows, chunk_size):
-                data = {
-                    col: np_to_pyarrow_array(h5_file[col][i : i + chunk_size])
-                    for col in read_columns
-                }
-                table = pa.table(data)
-                yield table
+                if set(read_columns) == set(["ra", "dec"]):
+                    data = {
+                        col: np_to_pyarrow_array(h5_file[col][i : i + chunk_size])
+                        for col in read_columns
+                    }
+                    table = pa.table(data)
+                    yield table
+                else:
+                    data = {
+                        col: h5_file[col][i : i + chunk_size]
+                        for col in read_columns
+                    }
+                    table = self.transform_klass.dataset_to_table(data)
+                    yield table
 
 
 def input_file_list(path: UPath) -> list[str]:
@@ -118,7 +143,7 @@ def main(argv=None):
         )
         .catalog(
             input_file_list=input_files,
-            file_reader=MMUReader(chunk_mb=128),
+            file_reader=MMUReader(chunk_mb=128, transform_klass=SDSSTransformer),
             ra_column=cmd_args.ra,
             dec_column=cmd_args.dec,
             pixel_threshold=cmd_args.max_rows,
@@ -127,8 +152,18 @@ def main(argv=None):
         .add_margin(margin_threshold=10.0, is_default=True)
     )
 
-    with Client(n_workers=min(8, cpu_count()), threads_per_worker=1) as client:
-        print(f"Dask dashboard: {client.dashboard_link}")
+    # Choose Client configuration based on debug flag
+    if cmd_args.debug:
+        # Debug mode: use 1 worker and 1 thread for easier debugging with breakpoints
+        client_kwargs = {"n_workers": 1, "threads_per_worker": 1, "processes": False}
+        logger.info("Running in DEBUG mode (single worker, single thread, no separate processes)")
+    else:
+        # Production mode: use multiple workers
+        client_kwargs = {"n_workers": min(8, cpu_count()), "threads_per_worker": 1}
+        logger.info(f"Running in PRODUCTION mode ({client_kwargs['n_workers']} workers)")
+
+    with Client(**client_kwargs) as client:
+        logger.info(f"Dask dashboard: {client.dashboard_link}")
         pipeline_with_client(import_args, client)
 
 

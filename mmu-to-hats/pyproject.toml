@@ -13,3 +13,7 @@ dependencies = [
     "pyarrow",
     "universal_pathlib",
 ]
+
+[tool.setuptools.packages.find]
+include = ["catalog_functions*"]
+exclude = ["verification*"]
