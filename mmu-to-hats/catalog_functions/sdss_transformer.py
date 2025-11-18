@@ -1,6 +1,7 @@
 """
 SDSSTransformer: Clean class-based transformation from HDF5 to PyArrow tables.
 """
+
 import pyarrow as pa
 import numpy as np
 from catalog_functions.utils import np_to_pyarrow_array, BaseTransformer
@@ -26,9 +27,7 @@ class SDSSTransformer(BaseTransformer):
         "healpix",
     ]
 
-    BOOL_FEATURES = [
-        "ZWARNING"
-    ]
+    BOOL_FEATURES = ["ZWARNING"]
 
     FLUX_FEATURES = [
         "SPECTROFLUX",
@@ -37,20 +36,22 @@ class SDSSTransformer(BaseTransformer):
         "SPECTROSYNFLUX_IVAR",
     ]
 
-    FLUX_FILTERS = ['U', 'G', 'R', 'I', 'Z']
+    FLUX_FILTERS = ["U", "G", "R", "I", "Z"]
 
     def create_schema(self):
         """Create the output PyArrow schema."""
         fields = []
 
         # Spectrum struct with nested arrays
-        spectrum_struct = pa.struct([
-            pa.field("flux", pa.list_(pa.float32())),
-            pa.field("ivar", pa.list_(pa.float32())),
-            pa.field("lsf_sigma", pa.list_(pa.float32())),
-            pa.field("lambda", pa.list_(pa.float32())),
-            pa.field("mask", pa.list_(pa.bool_())),
-        ])
+        spectrum_struct = pa.struct(
+            [
+                pa.field("flux", pa.list_(pa.float32())),
+                pa.field("ivar", pa.list_(pa.float32())),
+                pa.field("lsf_sigma", pa.list_(pa.float32())),
+                pa.field("lambda", pa.list_(pa.float32())),
+                pa.field("mask", pa.list_(pa.bool_())),
+            ]
+        )
         fields.append(pa.field("spectrum", spectrum_struct))
 
         # Add all feature types
@@ -105,8 +106,7 @@ class SDSSTransformer(BaseTransformer):
         ]
 
         columns["spectrum"] = pa.StructArray.from_arrays(
-            spectrum_arrays,
-            names=["flux", "ivar", "lsf_sigma", "lambda", "mask"]
+            spectrum_arrays, names=["flux", "ivar", "lsf_sigma", "lambda", "mask"]
         )
 
         # 2. Add float features
@@ -130,21 +130,16 @@ class SDSSTransformer(BaseTransformer):
             flux_data = data[f][:]  # Shape: [n_objects, 5]
             for n, b in enumerate(self.FLUX_FILTERS):
                 # Extract column n for all objects
-                columns[f"{f}_{b}"] = pa.array(
-                    flux_data[:, n].astype(np.float32)
-                )
+                columns[f"{f}_{b}"] = pa.array(flux_data[:, n].astype(np.float32))
 
         # 7. Add object_id
-        columns["object_id"] = pa.array(
-            [str(oid) for oid in data["object_id"][:]]
-        )
+        columns["object_id"] = pa.array([str(oid) for oid in data["object_id"][:]])
 
         # Create table with schema
         schema = self.create_schema()
         table = pa.table(columns, schema=schema)
 
         return table
-
 
 
 # just here for testing purposes, can be used to another file to separate prod and test code

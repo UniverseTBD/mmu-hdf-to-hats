@@ -57,21 +57,17 @@ Data Citations:
 Guy et al. (2010)
 """
 
-_HOMEPAGE = "https://www.aanda.org/articles/aa/full_html/2010/15/aa14468-10/aa14468-10.html"
+_HOMEPAGE = (
+    "https://www.aanda.org/articles/aa/full_html/2010/15/aa14468-10/aa14468-10.html"
+)
 
 _LICENSE = "GNU General Public License v3.0"
 
 _VERSION = "1.0.0"
 
-_STR_FEATURES = [
-    "object_id",
-    "obj_type"
-]
+_STR_FEATURES = ["object_id", "obj_type"]
 
-_FLOAT_FEATURES = [
-    "redshift",
-    "host_log_mass"
-]
+_FLOAT_FEATURES = ["redshift", "host_log_mass"]
 
 
 class SNLS(datasets.GeneratorBasedBuilder):
@@ -83,7 +79,9 @@ class SNLS(datasets.GeneratorBasedBuilder):
         datasets.BuilderConfig(
             name="snls",
             version=VERSION,
-            data_files=DataFilesPatternsDict.from_patterns({"train": ["data/healpix=*/*.hdf5"]}), 
+            data_files=DataFilesPatternsDict.from_patterns(
+                {"train": ["data/healpix=*/*.hdf5"]}
+            ),
             description="Light curves from SNLS",
         ),
     ]
@@ -95,12 +93,14 @@ class SNLS(datasets.GeneratorBasedBuilder):
         """Defines the features available in this dataset."""
         # Starting with all features common to light curve datasets
         features = {
-            'lightcurve': Sequence(feature={
-                'band': Value('string'),
-                'flux': Value('float32'),
-                'flux_err': Value('float32'),
-                'time': Value('float32'),
-            }),
+            "lightcurve": Sequence(
+                feature={
+                    "band": Value("string"),
+                    "flux": Value("float32"),
+                    "flux_err": Value("float32"),
+                    "time": Value("float32"),
+                }
+            ),
         }
 
         # Adding all values from the catalog
@@ -109,7 +109,9 @@ class SNLS(datasets.GeneratorBasedBuilder):
         for f in _STR_FEATURES:
             features[f] = Value("string")
 
-        ACKNOWLEDGEMENTS = "\n".join([f"% {line}" for line in _ACKNOWLEDGEMENTS.split("\n")])
+        ACKNOWLEDGEMENTS = "\n".join(
+            [f"% {line}" for line in _ACKNOWLEDGEMENTS.split("\n")]
+        )
 
         return datasets.DatasetInfo(
             # This is the description that will appear on the datasets page.
@@ -123,7 +125,6 @@ class SNLS(datasets.GeneratorBasedBuilder):
             # Citation for the dataset
             citation=ACKNOWLEDGEMENTS + "\n" + _CITATION,
         )
-
 
     def _split_generators(self, dl_manager):
         """We handle string, list and dicts in datafiles"""
@@ -150,22 +151,29 @@ class SNLS(datasets.GeneratorBasedBuilder):
                 # Parse data
                 idxs = np.arange(0, data["flux"].shape[0])
                 band_idxs = idxs.repeat(data["flux"].shape[-1]).reshape(
-                    len(data["bands"][()].decode('utf-8').split(",")), -1
+                    len(data["bands"][()].decode("utf-8").split(",")), -1
                 )
-                bands = data["bands"][()].decode('utf-8').split(",")
+                bands = data["bands"][()].decode("utf-8").split(",")
                 example = {
                     "lightcurve": {
-                        "band": np.asarray([bands[band_number] for band_number in band_idxs.flatten().astype("int32")]).astype("str"),
+                        "band": np.asarray(
+                            [
+                                bands[band_number]
+                                for band_number in band_idxs.flatten().astype("int32")
+                            ]
+                        ).astype("str"),
                         "time": np.asarray(data["time"]).flatten().astype("float32"),
                         "flux": np.asarray(data["flux"]).flatten().astype("float32"),
-                        "flux_err": np.asarray(data["flux_err"]).flatten().astype("float32"),
+                        "flux_err": np.asarray(data["flux_err"])
+                        .flatten()
+                        .astype("float32"),
                     }
                 }
-                    
+
                 # Add remaining features
                 for f in _FLOAT_FEATURES:
                     example[f] = np.asarray(data[f]).astype("float32")
                 for f in _STR_FEATURES:
-                    example[f] = data[f][()].decode('utf-8')
+                    example[f] = data[f][()].decode("utf-8")
 
                 yield str(data["object_id"][()]), example

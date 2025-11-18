@@ -1,6 +1,7 @@
 """
 DESIPROVABGSTransformer: Clean class-based transformation from HDF5 to PyArrow tables.
 """
+
 import pyarrow as pa
 import numpy as np
 from catalog_functions.utils import BaseTransformer
@@ -11,15 +12,27 @@ class DESIPROVABGSTransformer(BaseTransformer):
 
     # Feature group definitions from desi_provabgs.py
     FLOAT_FEATURES = [
-        'Z_HP', 'Z_MW', 'TAGE_MW', 'AVG_SFR', 'ZERR', 'TSNR2_BGS',
-        'MAG_G', 'MAG_R', 'MAG_Z', 'MAG_W1', 'FIBMAG_R', 'HPIX_64',
-        'PROVABGS_Z_MAX', 'SCHLEGEL_COLOR', 'PROVABGS_W_ZFAIL',
-        'PROVABGS_W_FIBASSIGN',
+        "Z_HP",
+        "Z_MW",
+        "TAGE_MW",
+        "AVG_SFR",
+        "ZERR",
+        "TSNR2_BGS",
+        "MAG_G",
+        "MAG_R",
+        "MAG_Z",
+        "MAG_W1",
+        "FIBMAG_R",
+        "HPIX_64",
+        "PROVABGS_Z_MAX",
+        "SCHLEGEL_COLOR",
+        "PROVABGS_W_ZFAIL",
+        "PROVABGS_W_FIBASSIGN",
     ]
 
     BOOL_FEATURES = [
-        'IS_BGS_BRIGHT',
-        'IS_BGS_FAINT',
+        "IS_BGS_BRIGHT",
+        "IS_BGS_FAINT",
     ]
 
     def create_schema(self):
@@ -73,15 +86,21 @@ class DESIPROVABGSTransformer(BaseTransformer):
         mcmc_data = data["PROVABGS_MCMC"][:]
         # Convert to list of lists of lists
         mcmc_lists = [[row.tolist() for row in obj_mcmc] for obj_mcmc in mcmc_data]
-        columns["PROVABGS_MCMC"] = pa.array(mcmc_lists, type=pa.list_(pa.list_(pa.float32())))
+        columns["PROVABGS_MCMC"] = pa.array(
+            mcmc_lists, type=pa.list_(pa.list_(pa.float32()))
+        )
 
         # 3. Add PROVABGS best-fit parameters (shape: [n_objects, 13])
         theta_bf_data = data["PROVABGS_THETA_BF"][:]
         theta_bf_lists = [row.tolist() for row in theta_bf_data]
-        columns["PROVABGS_THETA_BF"] = pa.array(theta_bf_lists, type=pa.list_(pa.float32()))
+        columns["PROVABGS_THETA_BF"] = pa.array(
+            theta_bf_lists, type=pa.list_(pa.float32())
+        )
 
         # 4. Add log stellar mass
-        columns["LOG_MSTAR"] = pa.array(data["PROVABGS_LOGMSTAR_BF"][:].astype(np.float32))
+        columns["LOG_MSTAR"] = pa.array(
+            data["PROVABGS_LOGMSTAR_BF"][:].astype(np.float32)
+        )
 
         # 5. Add float features
         for f in self.FLOAT_FEATURES:
@@ -92,9 +111,7 @@ class DESIPROVABGSTransformer(BaseTransformer):
             columns[f] = pa.array(data[f][:].astype(bool))
 
         # 7. Add object_id
-        columns["object_id"] = pa.array(
-            [str(oid) for oid in data["object_id"][:]]
-        )
+        columns["object_id"] = pa.array([str(oid) for oid in data["object_id"][:]])
 
         # Create table with schema
         schema = self.create_schema()

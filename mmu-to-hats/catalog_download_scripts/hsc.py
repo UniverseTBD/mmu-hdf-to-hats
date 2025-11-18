@@ -78,31 +78,31 @@ _LICENSE = "See Acknowledgements / Citation"
 _VERSION = "1.0.0"
 
 _FLOAT_FEATURES = [
-    'a_g',
-    'a_r',
-    'a_i',
-    'a_z',
-    'a_y',
-    'g_extendedness_value',
-    'r_extendedness_value',
-    'i_extendedness_value',
-    'z_extendedness_value',
-    'y_extendedness_value',
+    "a_g",
+    "a_r",
+    "a_i",
+    "a_z",
+    "a_y",
+    "g_extendedness_value",
+    "r_extendedness_value",
+    "i_extendedness_value",
+    "z_extendedness_value",
+    "y_extendedness_value",
     # 'g_variance_value',
     # 'r_variance_value',
     # 'i_variance_value',
     # 'z_variance_value',
     # 'y_variance_value',
-    'g_cmodel_mag',
-    'g_cmodel_magerr',
-    'r_cmodel_mag',
-    'r_cmodel_magerr',
-    'i_cmodel_mag',
-    'i_cmodel_magerr',
-    'z_cmodel_mag',
-    'z_cmodel_magerr',
-    'y_cmodel_mag',
-    'y_cmodel_magerr',
+    "g_cmodel_mag",
+    "g_cmodel_magerr",
+    "r_cmodel_mag",
+    "r_cmodel_magerr",
+    "i_cmodel_mag",
+    "i_cmodel_magerr",
+    "z_cmodel_mag",
+    "z_cmodel_magerr",
+    "y_cmodel_mag",
+    "y_cmodel_magerr",
     # 'g_cmodel_flux',
     # 'g_cmodel_fluxerr',
     # 'r_cmodel_flux',
@@ -113,37 +113,37 @@ _FLOAT_FEATURES = [
     # 'z_cmodel_fluxerr',
     # 'y_cmodel_flux',
     # 'y_cmodel_fluxerr',
-    'g_sdssshape_psf_shape11',
-    'g_sdssshape_psf_shape22',
-    'g_sdssshape_psf_shape12',
-    'r_sdssshape_psf_shape11',
-    'r_sdssshape_psf_shape22',
-    'r_sdssshape_psf_shape12',
-    'i_sdssshape_psf_shape11',
-    'i_sdssshape_psf_shape22',
-    'i_sdssshape_psf_shape12',
-    'z_sdssshape_psf_shape11',
-    'z_sdssshape_psf_shape22',
-    'z_sdssshape_psf_shape12',
-    'y_sdssshape_psf_shape11',
-    'y_sdssshape_psf_shape22',
-    'y_sdssshape_psf_shape12',
-    'g_sdssshape_shape11',
-    'g_sdssshape_shape22',
-    'g_sdssshape_shape12',
-    'r_sdssshape_shape11',
-    'r_sdssshape_shape22',
-    'r_sdssshape_shape12',
-    'i_sdssshape_shape11',
-    'i_sdssshape_shape22',
-    'i_sdssshape_shape12',
-    'z_sdssshape_shape11',
-    'z_sdssshape_shape22',
-    'z_sdssshape_shape12',
-    'y_sdssshape_shape11',
-    'y_sdssshape_shape22',
-    'y_sdssshape_shape12'
-    ]
+    "g_sdssshape_psf_shape11",
+    "g_sdssshape_psf_shape22",
+    "g_sdssshape_psf_shape12",
+    "r_sdssshape_psf_shape11",
+    "r_sdssshape_psf_shape22",
+    "r_sdssshape_psf_shape12",
+    "i_sdssshape_psf_shape11",
+    "i_sdssshape_psf_shape22",
+    "i_sdssshape_psf_shape12",
+    "z_sdssshape_psf_shape11",
+    "z_sdssshape_psf_shape22",
+    "z_sdssshape_psf_shape12",
+    "y_sdssshape_psf_shape11",
+    "y_sdssshape_psf_shape22",
+    "y_sdssshape_psf_shape12",
+    "g_sdssshape_shape11",
+    "g_sdssshape_shape22",
+    "g_sdssshape_shape12",
+    "r_sdssshape_shape11",
+    "r_sdssshape_shape22",
+    "r_sdssshape_shape12",
+    "i_sdssshape_shape11",
+    "i_sdssshape_shape22",
+    "i_sdssshape_shape12",
+    "z_sdssshape_shape11",
+    "z_sdssshape_shape22",
+    "z_sdssshape_shape12",
+    "y_sdssshape_shape11",
+    "y_sdssshape_shape22",
+    "y_sdssshape_shape12",
+]
 
 
 class HSC(datasets.GeneratorBasedBuilder):
@@ -152,36 +152,47 @@ class HSC(datasets.GeneratorBasedBuilder):
     VERSION = _VERSION
 
     BUILDER_CONFIGS = [
-        datasets.BuilderConfig(name="pdr3_dud_22.5", 
-                               version=VERSION, 
-                               data_files=DataFilesPatternsDict.from_patterns({'train': ['pdr3_dud_22.5/healpix=*/*.hdf5']}),
-                               description="Deep / Ultra Deep sample from PDR3 up to 22.5 imag."),
+        datasets.BuilderConfig(
+            name="pdr3_dud_22.5",
+            version=VERSION,
+            data_files=DataFilesPatternsDict.from_patterns(
+                {"train": ["pdr3_dud_22.5/healpix=*/*.hdf5"]}
+            ),
+            description="Deep / Ultra Deep sample from PDR3 up to 22.5 imag.",
+        ),
     ]
 
     DEFAULT_CONFIG_NAME = "pdr3_dud_22.5"
 
     _image_size = 160
 
-    _bands = ['G', 'R', 'I', 'Z', 'Y']
+    _bands = ["G", "R", "I", "Z", "Y"]
 
     @classmethod
     def _info(self):
-        """ Defines the features available in this dataset.
-        """
+        """Defines the features available in this dataset."""
         # Starting with all features common to image datasets
         features = {
-            'image': Sequence(feature={
-                'band': Value('string'),
-                'flux': Array2D(shape=(self._image_size, self._image_size), dtype='float32'),
-                'ivar': Array2D(shape=(self._image_size, self._image_size), dtype='float32'),
-                'mask': Array2D(shape=(self._image_size, self._image_size), dtype='bool'),
-                'psf_fwhm': Value('float32'),
-                'scale': Value('float32'),
-            })
+            "image": Sequence(
+                feature={
+                    "band": Value("string"),
+                    "flux": Array2D(
+                        shape=(self._image_size, self._image_size), dtype="float32"
+                    ),
+                    "ivar": Array2D(
+                        shape=(self._image_size, self._image_size), dtype="float32"
+                    ),
+                    "mask": Array2D(
+                        shape=(self._image_size, self._image_size), dtype="bool"
+                    ),
+                    "psf_fwhm": Value("float32"),
+                    "scale": Value("float32"),
+                }
+            )
         }
         # Adding all values from the catalog
         for f in _FLOAT_FEATURES:
-            features[f] = Value('float32')
+            features[f] = Value("float32")
 
         features["object_id"] = Value("string")
 
@@ -201,44 +212,53 @@ class HSC(datasets.GeneratorBasedBuilder):
     def _split_generators(self, dl_manager):
         """We handle string, list and dicts in datafiles"""
         if not self.config.data_files:
-            raise ValueError(f"At least one data file must be specified, but got data_files={self.config.data_files}")
+            raise ValueError(
+                f"At least one data file must be specified, but got data_files={self.config.data_files}"
+            )
         splits = []
         for split_name, files in self.config.data_files.items():
             if isinstance(files, str):
                 files = [files]
-            splits.append(datasets.SplitGenerator(name=split_name, gen_kwargs={"files": files})) 
+            splits.append(
+                datasets.SplitGenerator(name=split_name, gen_kwargs={"files": files})
+            )
         return splits
 
     def _generate_examples(self, files, object_ids=None):
-        """ Yields examples as (key, example) tuples.
-        """
+        """Yields examples as (key, example) tuples."""
         for j, file in enumerate(files):
             with h5py.File(file, "r") as data:
                 if object_ids is not None:
                     keys = object_ids[j]
                 else:
                     keys = data["object_id"]
-                
+
                 # Preparing an index for fast searching through the catalog
                 sort_index = np.argsort(data["object_id"])
                 sorted_ids = data["object_id"][:][sort_index]
 
                 for k in keys:
-                    # Extract the indices of requested ids in the catalog 
+                    # Extract the indices of requested ids in the catalog
                     i = sort_index[np.searchsorted(sorted_ids, k)]
                     # Parse image data
-                    example = {'image':  [{'band': data['image_band'][i][j].decode('utf-8'),
-                               'flux': data['image_array'][i][j],
-                               'ivar': data['image_ivar'][i][j],
-                               'mask': data['image_mask'][i][j],
-                               'psf_fwhm': data['image_psf_fwhm'][i][j],
-                               'scale': data['image_scale'][i][j]} for j, _ in enumerate( self._bands )]
+                    example = {
+                        "image": [
+                            {
+                                "band": data["image_band"][i][j].decode("utf-8"),
+                                "flux": data["image_array"][i][j],
+                                "ivar": data["image_ivar"][i][j],
+                                "mask": data["image_mask"][i][j],
+                                "psf_fwhm": data["image_psf_fwhm"][i][j],
+                                "scale": data["image_scale"][i][j],
+                            }
+                            for j, _ in enumerate(self._bands)
+                        ]
                     }
                     # Add all other requested features
                     for f in _FLOAT_FEATURES:
-                        example[f] = data[f][i].astype('float32')
-                    
+                        example[f] = data[f][i].astype("float32")
+
                     # Add object_id
                     example["object_id"] = str(data["object_id"][i])
 
-                    yield str(data['object_id'][i]), example
+                    yield str(data["object_id"][i]), example

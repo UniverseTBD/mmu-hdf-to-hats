@@ -111,6 +111,7 @@ _CITATIONS = {
 
 ACKNOWLEDGEMENTS = """This research has made use of the CfA Supernova Archive, which is funded in part by the National Science Foundation through grant AST 0907903."""
 
+
 class CFA(datasets.GeneratorBasedBuilder):
     """CFA Supernova Light Curve Dataset Collection"""
 
@@ -120,25 +121,33 @@ class CFA(datasets.GeneratorBasedBuilder):
         datasets.BuilderConfig(
             name="cfa3",
             version=VERSION,
-            data_files=DataFilesPatternsDict.from_patterns({"train": ["./cfa3/healpix=*/*.hdf5"]}),
+            data_files=DataFilesPatternsDict.from_patterns(
+                {"train": ["./cfa3/healpix=*/*.hdf5"]}
+            ),
             description=_DESCRIPTIONS["cfa3"],
         ),
         datasets.BuilderConfig(
-            name="cfa4", 
+            name="cfa4",
             version=VERSION,
-            data_files=DataFilesPatternsDict.from_patterns({"train": ["./cfa4/healpix=*/*.hdf5"]}),
+            data_files=DataFilesPatternsDict.from_patterns(
+                {"train": ["./cfa4/healpix=*/*.hdf5"]}
+            ),
             description=_DESCRIPTIONS["cfa4"],
         ),
         datasets.BuilderConfig(
             name="cfa_SECCSN",
             version=VERSION,
-            data_files=DataFilesPatternsDict.from_patterns({"train": ["./cfa_seccsn/healpix=*/*.hdf5"]}),
+            data_files=DataFilesPatternsDict.from_patterns(
+                {"train": ["./cfa_seccsn/healpix=*/*.hdf5"]}
+            ),
             description=_DESCRIPTIONS["cfa_SECCSN"],
         ),
         datasets.BuilderConfig(
             name="cfa_snII",
             version=VERSION,
-            data_files=DataFilesPatternsDict.from_patterns({"train": ["./cfa_snii/healpix=*/*.hdf5"]}),
+            data_files=DataFilesPatternsDict.from_patterns(
+                {"train": ["./cfa_snii/healpix=*/*.hdf5"]}
+            ),
             description=_DESCRIPTIONS["cfa_snII"],
         ),
     ]
@@ -171,7 +180,7 @@ class CFA(datasets.GeneratorBasedBuilder):
             license=_LICENSE,
             citation=_CITATIONS[self.config.name],
         )
-    
+
     def _split_generators(self, dl_manager):
         """We handle string, list and dicts in datafiles"""
         if not self.config.data_files:
@@ -200,7 +209,7 @@ class CFA(datasets.GeneratorBasedBuilder):
                 datasets.SplitGenerator(name=split_name, gen_kwargs={"files": files})
             )
         return splits
-    
+
     def _generate_examples(self, files, object_ids=None):
         """Yields examples as (key, example) tuples."""
         for file_number, file in enumerate(itertools.chain.from_iterable(files)):

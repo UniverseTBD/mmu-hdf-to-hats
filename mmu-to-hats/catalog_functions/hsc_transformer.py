@@ -1,6 +1,7 @@
 """
 HSCTransformer: Clean class-based transformation from HDF5 to PyArrow tables.
 """
+
 import pyarrow as pa
 import numpy as np
 from catalog_functions.utils import BaseTransformer
@@ -11,40 +12,76 @@ class HSCTransformer(BaseTransformer):
 
     # Feature group definitions from hsc.py
     FLOAT_FEATURES = [
-        'a_g', 'a_r', 'a_i', 'a_z', 'a_y',
-        'g_extendedness_value', 'r_extendedness_value', 'i_extendedness_value',
-        'z_extendedness_value', 'y_extendedness_value',
-        'g_cmodel_mag', 'g_cmodel_magerr', 'r_cmodel_mag', 'r_cmodel_magerr',
-        'i_cmodel_mag', 'i_cmodel_magerr', 'z_cmodel_mag', 'z_cmodel_magerr',
-        'y_cmodel_mag', 'y_cmodel_magerr',
-        'g_sdssshape_psf_shape11', 'g_sdssshape_psf_shape22', 'g_sdssshape_psf_shape12',
-        'r_sdssshape_psf_shape11', 'r_sdssshape_psf_shape22', 'r_sdssshape_psf_shape12',
-        'i_sdssshape_psf_shape11', 'i_sdssshape_psf_shape22', 'i_sdssshape_psf_shape12',
-        'z_sdssshape_psf_shape11', 'z_sdssshape_psf_shape22', 'z_sdssshape_psf_shape12',
-        'y_sdssshape_psf_shape11', 'y_sdssshape_psf_shape22', 'y_sdssshape_psf_shape12',
-        'g_sdssshape_shape11', 'g_sdssshape_shape22', 'g_sdssshape_shape12',
-        'r_sdssshape_shape11', 'r_sdssshape_shape22', 'r_sdssshape_shape12',
-        'i_sdssshape_shape11', 'i_sdssshape_shape22', 'i_sdssshape_shape12',
-        'z_sdssshape_shape11', 'z_sdssshape_shape22', 'z_sdssshape_shape12',
-        'y_sdssshape_shape11', 'y_sdssshape_shape22', 'y_sdssshape_shape12'
+        "a_g",
+        "a_r",
+        "a_i",
+        "a_z",
+        "a_y",
+        "g_extendedness_value",
+        "r_extendedness_value",
+        "i_extendedness_value",
+        "z_extendedness_value",
+        "y_extendedness_value",
+        "g_cmodel_mag",
+        "g_cmodel_magerr",
+        "r_cmodel_mag",
+        "r_cmodel_magerr",
+        "i_cmodel_mag",
+        "i_cmodel_magerr",
+        "z_cmodel_mag",
+        "z_cmodel_magerr",
+        "y_cmodel_mag",
+        "y_cmodel_magerr",
+        "g_sdssshape_psf_shape11",
+        "g_sdssshape_psf_shape22",
+        "g_sdssshape_psf_shape12",
+        "r_sdssshape_psf_shape11",
+        "r_sdssshape_psf_shape22",
+        "r_sdssshape_psf_shape12",
+        "i_sdssshape_psf_shape11",
+        "i_sdssshape_psf_shape22",
+        "i_sdssshape_psf_shape12",
+        "z_sdssshape_psf_shape11",
+        "z_sdssshape_psf_shape22",
+        "z_sdssshape_psf_shape12",
+        "y_sdssshape_psf_shape11",
+        "y_sdssshape_psf_shape22",
+        "y_sdssshape_psf_shape12",
+        "g_sdssshape_shape11",
+        "g_sdssshape_shape22",
+        "g_sdssshape_shape12",
+        "r_sdssshape_shape11",
+        "r_sdssshape_shape22",
+        "r_sdssshape_shape12",
+        "i_sdssshape_shape11",
+        "i_sdssshape_shape22",
+        "i_sdssshape_shape12",
+        "z_sdssshape_shape11",
+        "z_sdssshape_shape22",
+        "z_sdssshape_shape12",
+        "y_sdssshape_shape11",
+        "y_sdssshape_shape22",
+        "y_sdssshape_shape12",
     ]
 
     IMAGE_SIZE = 160
-    BANDS = ['G', 'R', 'I', 'Z', 'Y']
+    BANDS = ["G", "R", "I", "Z", "Y"]
 
     def create_schema(self):
         """Create the output PyArrow schema."""
         fields = []
 
         # Image sequence with band, flux, ivar, mask, psf_fwhm, scale
-        image_struct = pa.struct([
-            pa.field("band", pa.string()),
-            pa.field("flux", pa.list_(pa.list_(pa.float32()))),  # 2D array
-            pa.field("ivar", pa.list_(pa.list_(pa.float32()))),  # 2D array
-            pa.field("mask", pa.list_(pa.list_(pa.bool_()))),    # 2D array
-            pa.field("psf_fwhm", pa.float32()),
-            pa.field("scale", pa.float32()),
-        ])
+        image_struct = pa.struct(
+            [
+                pa.field("band", pa.string()),
+                pa.field("flux", pa.list_(pa.list_(pa.float32()))),  # 2D array
+                pa.field("ivar", pa.list_(pa.list_(pa.float32()))),  # 2D array
+                pa.field("mask", pa.list_(pa.list_(pa.bool_()))),  # 2D array
+                pa.field("psf_fwhm", pa.float32()),
+                pa.field("scale", pa.float32()),
+            ]
+        )
         fields.append(pa.field("image", pa.list_(image_struct)))
 
         # Add all float features
@@ -86,7 +123,7 @@ class HSCTransformer(BaseTransformer):
                 # Get band name from data
                 band = image_band[i][j]
                 if isinstance(band, bytes):
-                    band = band.decode('utf-8')
+                    band = band.decode("utf-8")
 
                 # Convert 2D arrays to lists of lists
                 flux_2d = image_array[i][j]
@@ -98,14 +135,16 @@ class HSCTransformer(BaseTransformer):
                 mask_2d = image_mask[i][j]
                 mask_list = [row.tolist() for row in mask_2d]
 
-                images_for_object.append({
-                    'band': band,
-                    'flux': flux_list,
-                    'ivar': ivar_list,
-                    'mask': mask_list,
-                    'psf_fwhm': float(image_psf_fwhm[i][j]),
-                    'scale': float(image_scale[i][j])
-                })
+                images_for_object.append(
+                    {
+                        "band": band,
+                        "flux": flux_list,
+                        "ivar": ivar_list,
+                        "mask": mask_list,
+                        "psf_fwhm": float(image_psf_fwhm[i][j]),
+                        "scale": float(image_scale[i][j]),
+                    }
+                )
             image_lists.append(images_for_object)
 
         # Create struct arrays for images
@@ -117,21 +156,24 @@ class HSCTransformer(BaseTransformer):
         scale_arrays = []
 
         for obj_images in image_lists:
-            band_arrays.append([img['band'] for img in obj_images])
-            flux_arrays.append([img['flux'] for img in obj_images])
-            ivar_arrays.append([img['ivar'] for img in obj_images])
-            mask_arrays.append([img['mask'] for img in obj_images])
-            psf_fwhm_arrays.append([img['psf_fwhm'] for img in obj_images])
-            scale_arrays.append([img['scale'] for img in obj_images])
+            band_arrays.append([img["band"] for img in obj_images])
+            flux_arrays.append([img["flux"] for img in obj_images])
+            ivar_arrays.append([img["ivar"] for img in obj_images])
+            mask_arrays.append([img["mask"] for img in obj_images])
+            psf_fwhm_arrays.append([img["psf_fwhm"] for img in obj_images])
+            scale_arrays.append([img["scale"] for img in obj_images])
 
-        image_structs = pa.StructArray.from_arrays([
-            pa.array(band_arrays, type=pa.list_(pa.string())),
-            pa.array(flux_arrays, type=pa.list_(pa.list_(pa.list_(pa.float32())))),
-            pa.array(ivar_arrays, type=pa.list_(pa.list_(pa.list_(pa.float32())))),
-            pa.array(mask_arrays, type=pa.list_(pa.list_(pa.list_(pa.bool_())))),
-            pa.array(psf_fwhm_arrays, type=pa.list_(pa.float32())),
-            pa.array(scale_arrays, type=pa.list_(pa.float32())),
-        ], names=["band", "flux", "ivar", "mask", "psf_fwhm", "scale"])
+        image_structs = pa.StructArray.from_arrays(
+            [
+                pa.array(band_arrays, type=pa.list_(pa.string())),
+                pa.array(flux_arrays, type=pa.list_(pa.list_(pa.list_(pa.float32())))),
+                pa.array(ivar_arrays, type=pa.list_(pa.list_(pa.list_(pa.float32())))),
+                pa.array(mask_arrays, type=pa.list_(pa.list_(pa.list_(pa.bool_())))),
+                pa.array(psf_fwhm_arrays, type=pa.list_(pa.float32())),
+                pa.array(scale_arrays, type=pa.list_(pa.float32())),
+            ],
+            names=["band", "flux", "ivar", "mask", "psf_fwhm", "scale"],
+        )
 
         columns["image"] = image_structs
 
@@ -140,9 +182,7 @@ class HSCTransformer(BaseTransformer):
             columns[f] = pa.array(data[f][:].astype(np.float32))
 
         # 3. Add object_id
-        columns["object_id"] = pa.array(
-            [str(oid) for oid in data["object_id"][:]]
-        )
+        columns["object_id"] = pa.array([str(oid) for oid in data["object_id"][:]])
 
         # Create table with schema
         schema = self.create_schema()

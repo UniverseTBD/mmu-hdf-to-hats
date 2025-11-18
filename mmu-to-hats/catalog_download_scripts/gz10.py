@@ -98,13 +98,13 @@ class GZ10(datasets.GeneratorBasedBuilder):
             }
         )
 
-        if (
-            self.config.name == "gz10_rgb_images"
-        ):
+        if self.config.name == "gz10_rgb_images":
             features["rgb_image"] = datasets.Image()
             features["rgb_pixel_scale"] = datasets.Value("float32")
 
-        ACKNOWLEDGEMENTS = "\n".join([f"% {line}" for line in _ACKNOWLEDGEMENTS.split("\n")])
+        ACKNOWLEDGEMENTS = "\n".join(
+            [f"% {line}" for line in _ACKNOWLEDGEMENTS.split("\n")]
+        )
 
         return datasets.DatasetInfo(
             description=_DESCRIPTION,
@@ -151,9 +151,7 @@ class GZ10(datasets.GeneratorBasedBuilder):
                         "redshift": data["redshift"][i].astype(np.float32),
                     }
 
-                    if (
-                        self.config.name == "gz10_rgb_images"
-                    ):
+                    if self.config.name == "gz10_rgb_images":
                         example["rgb_image"] = data["images"][i]
                         example["rgb_pixel_scale"] = data["pxscale"][i]
 

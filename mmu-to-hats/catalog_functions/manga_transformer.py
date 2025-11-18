@@ -1,6 +1,7 @@
 """
 MaNGATransformer: Clean class-based transformation from HDF5 to PyArrow tables.
 """
+
 import pyarrow as pa
 import numpy as np
 from catalog_functions.utils import BaseTransformer
@@ -11,7 +12,7 @@ class MaNGATransformer(BaseTransformer):
 
     # Constants from manga.py
     IMAGE_SIZE = 96
-    IMAGE_FILTERS = ['G', 'R', 'I', 'Z']
+    IMAGE_FILTERS = ["G", "R", "I", "Z"]
     SPECTRUM_SIZE = 4563
 
     def create_schema(self):
@@ -24,52 +25,58 @@ class MaNGATransformer(BaseTransformer):
         fields.append(pa.field("spaxel_size_units", pa.string()))
 
         # Spaxels - list of structs with spectrum data
-        spaxel_struct = pa.struct([
-            pa.field("flux", pa.list_(pa.float32())),
-            pa.field("ivar", pa.list_(pa.float32())),
-            pa.field("mask", pa.list_(pa.int64())),
-            pa.field("lsf", pa.list_(pa.float32())),
-            pa.field("lambda", pa.list_(pa.float32())),
-            pa.field("x", pa.int8()),
-            pa.field("y", pa.int8()),
-            pa.field("spaxel_idx", pa.int16()),
-            pa.field("flux_units", pa.string()),
-            pa.field("lambda_units", pa.string()),
-            pa.field("skycoo_x", pa.float32()),
-            pa.field("skycoo_y", pa.float32()),
-            pa.field("ellcoo_r", pa.float32()),
-            pa.field("ellcoo_rre", pa.float32()),
-            pa.field("ellcoo_rkpc", pa.float32()),
-            pa.field("ellcoo_theta", pa.float32()),
-            pa.field("skycoo_units", pa.string()),
-            pa.field("ellcoo_r_units", pa.string()),
-            pa.field("ellcoo_rre_units", pa.string()),
-            pa.field("ellcoo_rkpc_units", pa.string()),
-            pa.field("ellcoo_theta_units", pa.string()),
-        ])
+        spaxel_struct = pa.struct(
+            [
+                pa.field("flux", pa.list_(pa.float32())),
+                pa.field("ivar", pa.list_(pa.float32())),
+                pa.field("mask", pa.list_(pa.int64())),
+                pa.field("lsf", pa.list_(pa.float32())),
+                pa.field("lambda", pa.list_(pa.float32())),
+                pa.field("x", pa.int8()),
+                pa.field("y", pa.int8()),
+                pa.field("spaxel_idx", pa.int16()),
+                pa.field("flux_units", pa.string()),
+                pa.field("lambda_units", pa.string()),
+                pa.field("skycoo_x", pa.float32()),
+                pa.field("skycoo_y", pa.float32()),
+                pa.field("ellcoo_r", pa.float32()),
+                pa.field("ellcoo_rre", pa.float32()),
+                pa.field("ellcoo_rkpc", pa.float32()),
+                pa.field("ellcoo_theta", pa.float32()),
+                pa.field("skycoo_units", pa.string()),
+                pa.field("ellcoo_r_units", pa.string()),
+                pa.field("ellcoo_rre_units", pa.string()),
+                pa.field("ellcoo_rkpc_units", pa.string()),
+                pa.field("ellcoo_theta_units", pa.string()),
+            ]
+        )
         fields.append(pa.field("spaxels", pa.list_(spaxel_struct)))
 
         # Images - list of reconstructed griz images
-        image_struct = pa.struct([
-            pa.field("filter", pa.string()),
-            pa.field("flux", pa.list_(pa.list_(pa.float32()))),  # 2D array
-            pa.field("flux_units", pa.string()),
-            pa.field("psf", pa.list_(pa.list_(pa.float32()))),   # 2D array
-            pa.field("psf_units", pa.string()),
-            pa.field("scale", pa.float32()),
-            pa.field("scale_units", pa.string()),
-        ])
+        image_struct = pa.struct(
+            [
+                pa.field("filter", pa.string()),
+                pa.field("flux", pa.list_(pa.list_(pa.float32()))),  # 2D array
+                pa.field("flux_units", pa.string()),
+                pa.field("psf", pa.list_(pa.list_(pa.float32()))),  # 2D array
+                pa.field("psf_units", pa.string()),
+                pa.field("scale", pa.float32()),
+                pa.field("scale_units", pa.string()),
+            ]
+        )
         fields.append(pa.field("images", pa.list_(image_struct)))
 
         # Maps - list of DAP analysis maps
-        map_struct = pa.struct([
-            pa.field("group", pa.string()),
-            pa.field("label", pa.string()),
-            pa.field("flux", pa.list_(pa.list_(pa.float32()))),  # 2D array
-            pa.field("ivar", pa.list_(pa.list_(pa.float32()))),  # 2D array
-            pa.field("mask", pa.list_(pa.list_(pa.float32()))),  # 2D array
-            pa.field("array_units", pa.string()),
-        ])
+        map_struct = pa.struct(
+            [
+                pa.field("group", pa.string()),
+                pa.field("label", pa.string()),
+                pa.field("flux", pa.list_(pa.list_(pa.float32()))),  # 2D array
+                pa.field("ivar", pa.list_(pa.list_(pa.float32()))),  # 2D array
+                pa.field("mask", pa.list_(pa.list_(pa.float32()))),  # 2D array
+                pa.field("array_units", pa.string()),
+            ]
+        )
         fields.append(pa.field("maps", pa.list_(map_struct)))
 
         # Object ID
@@ -103,7 +110,7 @@ class MaNGATransformer(BaseTransformer):
             row["spaxel_size"] = float(grp["spaxel_size"][()])
             spaxel_size_unit = grp["spaxel_size_unit"][()]
             if isinstance(spaxel_size_unit, bytes):
-                spaxel_size_unit = spaxel_size_unit.decode('utf-8')
+                spaxel_size_unit = spaxel_size_unit.decode("utf-8")
             row["spaxel_size_units"] = str(spaxel_size_unit)
 
             # 2. Process spaxels
@@ -132,31 +139,31 @@ class MaNGATransformer(BaseTransformer):
 
                 flux_units = spaxel_data[8]
                 if isinstance(flux_units, bytes):
-                    flux_units = flux_units.decode('utf-8')
+                    flux_units = flux_units.decode("utf-8")
 
                 lambda_units = spaxel_data[9]
                 if isinstance(lambda_units, bytes):
-                    lambda_units = lambda_units.decode('utf-8')
+                    lambda_units = lambda_units.decode("utf-8")
 
                 skycoo_units = spaxel_data[16]
                 if isinstance(skycoo_units, bytes):
-                    skycoo_units = skycoo_units.decode('utf-8')
+                    skycoo_units = skycoo_units.decode("utf-8")
 
                 ellcoo_r_units = spaxel_data[17]
                 if isinstance(ellcoo_r_units, bytes):
-                    ellcoo_r_units = ellcoo_r_units.decode('utf-8')
+                    ellcoo_r_units = ellcoo_r_units.decode("utf-8")
 
                 ellcoo_rre_units = spaxel_data[18]
                 if isinstance(ellcoo_rre_units, bytes):
-                    ellcoo_rre_units = ellcoo_rre_units.decode('utf-8')
+                    ellcoo_rre_units = ellcoo_rre_units.decode("utf-8")
 
                 ellcoo_rkpc_units = spaxel_data[19]
                 if isinstance(ellcoo_rkpc_units, bytes):
-                    ellcoo_rkpc_units = ellcoo_rkpc_units.decode('utf-8')
+                    ellcoo_rkpc_units = ellcoo_rkpc_units.decode("utf-8")
 
                 ellcoo_theta_units = spaxel_data[20]
                 if isinstance(ellcoo_theta_units, bytes):
-                    ellcoo_theta_units = ellcoo_theta_units.decode('utf-8')
+                    ellcoo_theta_units = ellcoo_theta_units.decode("utf-8")
 
                 spaxel = {
                     "flux": flux.tolist(),
@@ -190,19 +197,19 @@ class MaNGATransformer(BaseTransformer):
             for img_data in grp["images"][:]:
                 filt = img_data[0]
                 if isinstance(filt, bytes):
-                    filt = filt.decode('utf-8')
+                    filt = filt.decode("utf-8")
 
                 flux_units = img_data[2]
                 if isinstance(flux_units, bytes):
-                    flux_units = flux_units.decode('utf-8')
+                    flux_units = flux_units.decode("utf-8")
 
                 psf_units = img_data[4]
                 if isinstance(psf_units, bytes):
-                    psf_units = psf_units.decode('utf-8')
+                    psf_units = psf_units.decode("utf-8")
 
                 scale_units = img_data[6]
                 if isinstance(scale_units, bytes):
-                    scale_units = scale_units.decode('utf-8')
+                    scale_units = scale_units.decode("utf-8")
 
                 image = {
                     "filter": str(filt),
@@ -222,15 +229,15 @@ class MaNGATransformer(BaseTransformer):
             for map_data in grp["maps"][:]:
                 group = map_data[0]
                 if isinstance(group, bytes):
-                    group = group.decode('utf-8')
+                    group = group.decode("utf-8")
 
                 label = map_data[1]
                 if isinstance(label, bytes):
-                    label = label.decode('utf-8')
+                    label = label.decode("utf-8")
 
                 flux_units = map_data[5]
                 if isinstance(flux_units, bytes):
-                    flux_units = flux_units.decode('utf-8')
+                    flux_units = flux_units.decode("utf-8")
 
                 map_item = {
                     "group": str(group),
@@ -247,7 +254,7 @@ class MaNGATransformer(BaseTransformer):
             # 5. Add object_id
             oid = grp["object_id"][()]
             if isinstance(oid, bytes):
-                oid = oid.decode('utf-8')
+                oid = oid.decode("utf-8")
             row["object_id"] = str(oid)
 
             all_rows.append(row)

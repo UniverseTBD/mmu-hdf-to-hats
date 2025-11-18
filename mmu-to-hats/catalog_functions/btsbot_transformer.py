@@ -1,6 +1,7 @@
 """
 BTSbotTransformer: Clean class-based transformation from HDF5 to PyArrow tables.
 """
+
 import pyarrow as pa
 import numpy as np
 from catalog_functions.utils import BaseTransformer
@@ -11,46 +12,117 @@ class BTSbotTransformer(BaseTransformer):
 
     # Feature group definitions from btsbot.py
     FLOAT_FEATURES = [
-        'jd', 'diffmaglim', 'magpsf', 'sigmapsf', 'chipsf', 'magap', 'sigmagap',
-        'distnr', 'magnr', 'chinr', 'sharpnr', 'sky', 'magdiff', 'fwhm', 'classtar',
-        'mindtoedge', 'seeratio', 'magapbig', 'sigmagapbig', 'sgmag1', 'srmag1',
-        'simag1', 'szmag1', 'sgscore1', 'distpsnr1', 'jdstarthist', 'scorr',
-        'sgmag2', 'srmag2', 'simag2', 'szmag2', 'sgscore2', 'distpsnr2',
-        'sgmag3', 'srmag3', 'simag3', 'szmag3', 'sgscore3', 'distpsnr3',
-        'jdstartref', 'dsnrms', 'ssnrms', 'magzpsci', 'magzpsciunc', 'magzpscirms',
-        'clrcoeff', 'clrcounc', 'neargaia', 'neargaiabright', 'maggaia',
-        'maggaiabright', 'exptime', 'drb', 'acai_h', 'acai_v', 'acai_o', 'acai_n',
-        'acai_b', 'new_drb', 'peakmag', 'maxmag', 'peakmag_so_far', 'maxmag_so_far',
-        'age', 'days_since_peak', 'days_to_peak',
+        "jd",
+        "diffmaglim",
+        "magpsf",
+        "sigmapsf",
+        "chipsf",
+        "magap",
+        "sigmagap",
+        "distnr",
+        "magnr",
+        "chinr",
+        "sharpnr",
+        "sky",
+        "magdiff",
+        "fwhm",
+        "classtar",
+        "mindtoedge",
+        "seeratio",
+        "magapbig",
+        "sigmagapbig",
+        "sgmag1",
+        "srmag1",
+        "simag1",
+        "szmag1",
+        "sgscore1",
+        "distpsnr1",
+        "jdstarthist",
+        "scorr",
+        "sgmag2",
+        "srmag2",
+        "simag2",
+        "szmag2",
+        "sgscore2",
+        "distpsnr2",
+        "sgmag3",
+        "srmag3",
+        "simag3",
+        "szmag3",
+        "sgscore3",
+        "distpsnr3",
+        "jdstartref",
+        "dsnrms",
+        "ssnrms",
+        "magzpsci",
+        "magzpsciunc",
+        "magzpscirms",
+        "clrcoeff",
+        "clrcounc",
+        "neargaia",
+        "neargaiabright",
+        "maggaia",
+        "maggaiabright",
+        "exptime",
+        "drb",
+        "acai_h",
+        "acai_v",
+        "acai_o",
+        "acai_n",
+        "acai_b",
+        "new_drb",
+        "peakmag",
+        "maxmag",
+        "peakmag_so_far",
+        "maxmag_so_far",
+        "age",
+        "days_since_peak",
+        "days_to_peak",
     ]
 
     INT_FEATURES = [
-        'label', 'fid', 'programid', 'field', 'nneg', 'nbad', 'ndethist',
-        'ncovhist', 'nmtchps', 'nnotdet', 'N',
+        "label",
+        "fid",
+        "programid",
+        "field",
+        "nneg",
+        "nbad",
+        "ndethist",
+        "ncovhist",
+        "nmtchps",
+        "nnotdet",
+        "N",
     ]
 
     BOOL_FEATURES = [
-        'isdiffpos', 'is_SN', 'near_threshold', 'is_rise',
+        "isdiffpos",
+        "is_SN",
+        "near_threshold",
+        "is_rise",
     ]
 
     STRING_FEATURES = [
-        'OBJECT_ID_', 'source_set', 'split',
+        "OBJECT_ID_",
+        "source_set",
+        "split",
     ]
 
     IMAGE_SIZE = 63
-    VIEWS = ['science', 'reference', 'difference']
+    VIEWS = ["science", "reference", "difference"]
 
     def create_schema(self):
         """Create the output PyArrow schema."""
         fields = []
 
         # Image sequence with band, view, array, scale
-        image_struct = pa.struct([
-            pa.field("band", pa.string()),
-            pa.field("view", pa.string()),
-            pa.field("array", pa.list_(pa.list_(pa.float32()))),  # 2D array
-            pa.field("scale", pa.float32()),
-        ])
+        image_struct = pa.struct(
+            [
+                pa.field("band", pa.string()),
+                pa.field("view", pa.string()),
+                pa.field("array", pa.list_(pa.list_(pa.float32()))),  # 2D array
+                pa.field("scale", pa.float32()),
+            ]
+        )
         fields.append(pa.field("image", pa.list_(image_struct)))
 
         # Add all float features
@@ -104,14 +176,16 @@ class BTSbotTransformer(BaseTransformer):
 
                 band = band_data[i]
                 if isinstance(band, bytes):
-                    band = band.decode('utf-8')
+                    band = band.decode("utf-8")
 
-                images_for_object.append({
-                    'band': band,
-                    'view': view,
-                    'array': img_list,
-                    'scale': float(scale_data[i])
-                })
+                images_for_object.append(
+                    {
+                        "band": band,
+                        "view": view,
+                        "array": img_list,
+                        "scale": float(scale_data[i]),
+                    }
+                )
             image_lists.append(images_for_object)
 
         # Create struct arrays for images
@@ -121,17 +195,20 @@ class BTSbotTransformer(BaseTransformer):
         scale_arrays = []
 
         for obj_images in image_lists:
-            band_arrays.append([img['band'] for img in obj_images])
-            view_arrays.append([img['view'] for img in obj_images])
-            array_arrays.append([img['array'] for img in obj_images])
-            scale_arrays.append([img['scale'] for img in obj_images])
+            band_arrays.append([img["band"] for img in obj_images])
+            view_arrays.append([img["view"] for img in obj_images])
+            array_arrays.append([img["array"] for img in obj_images])
+            scale_arrays.append([img["scale"] for img in obj_images])
 
-        image_structs = pa.StructArray.from_arrays([
-            pa.array(band_arrays, type=pa.list_(pa.string())),
-            pa.array(view_arrays, type=pa.list_(pa.string())),
-            pa.array(array_arrays, type=pa.list_(pa.list_(pa.list_(pa.float32())))),
-            pa.array(scale_arrays, type=pa.list_(pa.float32())),
-        ], names=["band", "view", "array", "scale"])
+        image_structs = pa.StructArray.from_arrays(
+            [
+                pa.array(band_arrays, type=pa.list_(pa.string())),
+                pa.array(view_arrays, type=pa.list_(pa.string())),
+                pa.array(array_arrays, type=pa.list_(pa.list_(pa.list_(pa.float32())))),
+                pa.array(scale_arrays, type=pa.list_(pa.float32())),
+            ],
+            names=["band", "view", "array", "scale"],
+        )
 
         columns["image"] = image_structs
 
@@ -150,7 +227,12 @@ class BTSbotTransformer(BaseTransformer):
         # 5. Add string features
         for f in self.STRING_FEATURES:
             str_data = data[f][:]
-            columns[f] = pa.array([s.decode('utf-8') if isinstance(s, bytes) else str(s) for s in str_data])
+            columns[f] = pa.array(
+                [
+                    s.decode("utf-8") if isinstance(s, bytes) else str(s)
+                    for s in str_data
+                ]
+            )
 
         # 6. Add object_id (int64 in BTSbot)
         columns["object_id"] = pa.array(data["object_id"][:].astype(np.int64))

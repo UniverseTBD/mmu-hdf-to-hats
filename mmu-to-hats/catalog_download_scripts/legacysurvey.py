@@ -104,23 +104,26 @@ class DECaLS(datasets.GeneratorBasedBuilder):
 
     VERSION = _VERSION
 
-    BUILDER_CONFIGS = [     
-        datasets.BuilderConfig(name="dr10_south_21", 
-                                version=VERSION, 
-                                data_files=DataFilesPatternsDict.from_patterns({'train': ['dr10_south_21/healpix=*/*.hdf5']}),
-                                description="DR10 images from the southern sky, down to zmag 21"),
+    BUILDER_CONFIGS = [
+        datasets.BuilderConfig(
+            name="dr10_south_21",
+            version=VERSION,
+            data_files=DataFilesPatternsDict.from_patterns(
+                {"train": ["dr10_south_21/healpix=*/*.hdf5"]}
+            ),
+            description="DR10 images from the southern sky, down to zmag 21",
+        ),
     ]
 
     DEFAULT_CONFIG_NAME = "dr10_south_21"
 
     _pixel_scale = 0.262
     _image_size = 160
-    _bands = ['DES-G', 'DES-R', 'DES-I', 'DES-Z']
+    _bands = ["DES-G", "DES-R", "DES-I", "DES-Z"]
 
     @classmethod
     def _info(self):
-        """ Defines the features available in this dataset.
-        """
+        """Defines the features available in this dataset."""
         # Starting with all features common to image datasets
         features = {
             "image": Sequence(
@@ -152,7 +155,9 @@ class DECaLS(datasets.GeneratorBasedBuilder):
 
         features["object_id"] = Value("string")
 
-        ACKNOWLEDGEMENTS = "\n".join([f"% {line}" for line in _ACKNOWLEDGEMENTS.split("\n")])
+        ACKNOWLEDGEMENTS = "\n".join(
+            [f"% {line}" for line in _ACKNOWLEDGEMENTS.split("\n")]
+        )
 
         return datasets.DatasetInfo(
             # This is the description that will appear on the datasets page.
@@ -170,30 +175,33 @@ class DECaLS(datasets.GeneratorBasedBuilder):
     def _split_generators(self, dl_manager):
         """We handle string, list and dicts in datafiles"""
         if not self.config.data_files:
-            raise ValueError(f"At least one data file must be specified, but got data_files={self.config.data_files}")
+            raise ValueError(
+                f"At least one data file must be specified, but got data_files={self.config.data_files}"
+            )
         splits = []
         for split_name, files in self.config.data_files.items():
             if isinstance(files, str):
                 files = [files]
-            splits.append(datasets.SplitGenerator(name=split_name, gen_kwargs={"files": files})) 
+            splits.append(
+                datasets.SplitGenerator(name=split_name, gen_kwargs={"files": files})
+            )
         return splits
 
     def _generate_examples(self, files, object_ids=None):
-        """ Yields examples as (key, example) tuples.
-        """
+        """Yields examples as (key, example) tuples."""
         for j, file in enumerate(files):
             with h5py.File(file, "r") as data:
                 if object_ids is not None:
                     keys = object_ids[j]
                 else:
                     keys = data["object_id"]
-                
+
                 # Preparing an index for fast searching through the catalog
                 sort_index = np.argsort(data["object_id"])
                 sorted_ids = data["object_id"][:][sort_index]
 
                 for k in keys:
-                    # Extract the indices of requested ids in the catalog 
+                    # Extract the indices of requested ids in the catalog
                     i = sort_index[np.searchsorted(sorted_ids, k)]
                     # Parse image data
                     example = {
@@ -217,12 +225,12 @@ class DECaLS(datasets.GeneratorBasedBuilder):
                     }
                     # Add all other requested features
                     for f in _FLOAT_FEATURES:
-                        example[f] = data[f][i].astype('float32')
-                    
+                        example[f] = data[f][i].astype("float32")
+
                     # Add object type
-                    example['TYPE'] = data['TYPE'][i].decode('utf-8')
+                    example["TYPE"] = data["TYPE"][i].decode("utf-8")
 
                     # Add object_id
                     example["object_id"] = str(data["object_id"][i])
 
-                    yield str(data['object_id'][i]), example
+                    yield str(data["object_id"][i]), example

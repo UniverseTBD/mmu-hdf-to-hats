@@ -76,7 +76,9 @@ class CSPIDR3(datasets.GeneratorBasedBuilder):
         datasets.BuilderConfig(
             name="csp_dr3",
             version=VERSION,
-            data_files=DataFilesPatternsDict.from_patterns({"train": ["./*/healpix=*/*.hdf5"]}), # This seems fairly inflexible. Probably a massive failure point.
+            data_files=DataFilesPatternsDict.from_patterns(
+                {"train": ["./*/healpix=*/*.hdf5"]}
+            ),  # This seems fairly inflexible. Probably a massive failure point.
             description="Light curves from CSP-I DR3",
         ),
     ]
@@ -88,12 +90,14 @@ class CSPIDR3(datasets.GeneratorBasedBuilder):
         """Defines the features available in this dataset."""
         # Starting with all features common to light curve datasets
         features = {
-            'lightcurve': Sequence(feature={
-                "band": Value("string"),
-                "mag": Value("float32"),
-                "mag_err": Value("float32"),
-                "time": Value("float32"),
-            }),
+            "lightcurve": Sequence(
+                feature={
+                    "band": Value("string"),
+                    "mag": Value("float32"),
+                    "mag_err": Value("float32"),
+                    "time": Value("float32"),
+                }
+            ),
         }
 
         # Adding all values from the catalog
@@ -102,7 +106,9 @@ class CSPIDR3(datasets.GeneratorBasedBuilder):
         for f in _STR_FEATURES:
             features[f] = Value("string")
 
-        ACKNOWLEDGEMENTS = "\n".join([f"% {line}" for line in _ACKNOWLEDGEMENTS.split("\n")])
+        ACKNOWLEDGEMENTS = "\n".join(
+            [f"% {line}" for line in _ACKNOWLEDGEMENTS.split("\n")]
+        )
 
         return datasets.DatasetInfo(
             # This is the description that will appear on the datasets page.
@@ -156,8 +162,12 @@ class CSPIDR3(datasets.GeneratorBasedBuilder):
                     keys = [data["object_id"][()]]
 
                 # Preparing an index for fast searching through the catalog
-                sort_index = np.argsort(data["object_id"][()])  # Accessing the scalar index
-                sorted_ids = [data["object_id"][()]]  # Ensure this is a list of one element
+                sort_index = np.argsort(
+                    data["object_id"][()]
+                )  # Accessing the scalar index
+                sorted_ids = [
+                    data["object_id"][()]
+                ]  # Ensure this is a list of one element
 
                 for k in keys:
                     # Extract the indices of requested ids in the catalog
@@ -167,13 +177,24 @@ class CSPIDR3(datasets.GeneratorBasedBuilder):
                     band_idxs = idxs.repeat(data["mag"].shape[-1]).reshape(
                         data["bands"].shape[0], -1
                     )
-                    bands = [bstr.decode('utf-8') for bstr in data["bands"][()]]
+                    bands = [bstr.decode("utf-8") for bstr in data["bands"][()]]
                     example = {
-                        'lightcurve': {
-                            "band": np.asarray([bands[band_number] for band_number in band_idxs.flatten().astype("int32")]).astype("str"),
-                            "time": np.asarray(data["time"]).flatten().astype("float32"),
+                        "lightcurve": {
+                            "band": np.asarray(
+                                [
+                                    bands[band_number]
+                                    for band_number in band_idxs.flatten().astype(
+                                        "int32"
+                                    )
+                                ]
+                            ).astype("str"),
+                            "time": np.asarray(data["time"])
+                            .flatten()
+                            .astype("float32"),
                             "mag": np.asarray(data["mag"]).flatten().astype("float32"),
-                            "mag_err": np.asarray(data["mag_err"]).flatten().astype("float32"),
+                            "mag_err": np.asarray(data["mag_err"])
+                            .flatten()
+                            .astype("float32"),
                         }
                     }
                     # Add remaining features

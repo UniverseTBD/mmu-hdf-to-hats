@@ -62,15 +62,9 @@ _LICENSE = "GNU LESSER GENERAL PUBLIC LICENSE"
 
 _VERSION = "1.0.0"
 
-_STR_FEATURES = [
-    "object_id",
-    "obj_type"
-]
+_STR_FEATURES = ["object_id", "obj_type"]
 
-_FLOAT_FEATURES = [
-    "redshift",
-    "host_log_mass"
-]
+_FLOAT_FEATURES = ["redshift", "host_log_mass"]
 
 
 class SwiftSNIa(datasets.GeneratorBasedBuilder):
@@ -82,7 +76,9 @@ class SwiftSNIa(datasets.GeneratorBasedBuilder):
         datasets.BuilderConfig(
             name="swift_sne_ia",
             version=VERSION,
-            data_files=DataFilesPatternsDict.from_patterns({"train": ["data/healpix=*/*.hdf5"]}), # This seems fairly inflexible. Probably a massive failure point.
+            data_files=DataFilesPatternsDict.from_patterns(
+                {"train": ["data/healpix=*/*.hdf5"]}
+            ),  # This seems fairly inflexible. Probably a massive failure point.
             description="Light curves from Swift SNe Ia",
         ),
     ]
@@ -94,22 +90,25 @@ class SwiftSNIa(datasets.GeneratorBasedBuilder):
         """Defines the features available in this dataset."""
         # Starting with all features common to light curve datasets
         features = {
-            'lightcurve': Sequence(feature={
-                'band': Value('string'),
-                'flux': Value('float32'),
-                'flux_err': Value('float32'),
-                'time': Value('float32'),
-            }),
+            "lightcurve": Sequence(
+                feature={
+                    "band": Value("string"),
+                    "flux": Value("float32"),
+                    "flux_err": Value("float32"),
+                    "time": Value("float32"),
+                }
+            ),
         }
-
 
         # Adding all values from the catalog
         for f in _FLOAT_FEATURES:
             features[f] = Value("float32")
         for f in _STR_FEATURES:
             features[f] = Value("string")
-        
-        ACKNOWLEDGEMENTS = "\n".join([f"% {line}" for line in _ACKNOWLEDGEMENTS.split("\n")])
+
+        ACKNOWLEDGEMENTS = "\n".join(
+            [f"% {line}" for line in _ACKNOWLEDGEMENTS.split("\n")]
+        )
 
         return datasets.DatasetInfo(
             # This is the description that will appear on the datasets page.
@@ -149,22 +148,29 @@ class SwiftSNIa(datasets.GeneratorBasedBuilder):
                 # Parse data
                 idxs = np.arange(0, data["flux"].shape[0])
                 band_idxs = idxs.repeat(data["flux"].shape[-1]).reshape(
-                    len(data["bands"][()].decode('utf-8').split(",")), -1
+                    len(data["bands"][()].decode("utf-8").split(",")), -1
                 )
-                bands = data["bands"][()].decode('utf-8').split(",")
+                bands = data["bands"][()].decode("utf-8").split(",")
                 example = {
                     "lightcurve": {
-                        "band": np.asarray([bands[band_number] for band_number in band_idxs.flatten().astype("int32")]).astype("str"),
+                        "band": np.asarray(
+                            [
+                                bands[band_number]
+                                for band_number in band_idxs.flatten().astype("int32")
+                            ]
+                        ).astype("str"),
                         "time": np.asarray(data["time"]).flatten().astype("float32"),
                         "flux": np.asarray(data["flux"]).flatten().astype("float32"),
-                        "flux_err": np.asarray(data["flux_err"]).flatten().astype("float32"),
+                        "flux_err": np.asarray(data["flux_err"])
+                        .flatten()
+                        .astype("float32"),
                     }
                 }
-                    
+
                 # Add remaining features
                 for f in _FLOAT_FEATURES:
                     example[f] = np.asarray(data[f]).astype("float32")
                 for f in _STR_FEATURES:
-                    example[f] = data[f][()].decode('utf-8')
+                    example[f] = data[f][()].decode("utf-8")
 
                 yield str(data["object_id"][()]), example

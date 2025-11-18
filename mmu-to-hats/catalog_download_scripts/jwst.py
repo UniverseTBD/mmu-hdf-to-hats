@@ -114,10 +114,14 @@ _LICENSE = "We kindly request all scientific papers based on data or products do
 
 _VERSION = "1.1.0"
 
+
 class CustomBuilderConfig(datasets.BuilderConfig):
-    def __init__(self, image_size=96, 
-                 bands=['f090w', 'f115w', 'f150w', 'f200w', 'f277w', 'f356w', 'f444w'], 
-                 **kwargs):
+    def __init__(
+        self,
+        image_size=96,
+        bands=["f090w", "f115w", "f150w", "f200w", "f277w", "f356w", "f444w"],
+        **kwargs,
+    ):
         """Custom builder config for JWST dataset.
 
         Args:
@@ -163,7 +167,7 @@ class JWST(datasets.GeneratorBasedBuilder):
         CustomBuilderConfig(
             name="ngdeep",
             version=VERSION,
-            bands=['f115w', 'f150w', 'f200w', 'f277w', 'f356w', 'f444w'],
+            bands=["f115w", "f150w", "f200w", "f277w", "f356w", "f444w"],
             data_files=DataFilesPatternsDict.from_patterns(
                 {"train": ["ngdeep/healpix=*/*.hdf5"]}
             ),
@@ -197,10 +201,16 @@ class JWST(datasets.GeneratorBasedBuilder):
 
     DEFAULT_CONFIG_NAME = "all"
 
-    _float_features = ['mag_auto', 'flux_radius', 
-                       'flux_auto', 'fluxerr_auto',
-                       'cxx_image', 'cyy_image', 'cxy_image']
-    
+    _float_features = [
+        "mag_auto",
+        "flux_radius",
+        "flux_auto",
+        "fluxerr_auto",
+        "cxx_image",
+        "cyy_image",
+        "cxy_image",
+    ]
+
     def _info(self):
         """Defines the features available in this dataset."""
 
@@ -210,13 +220,16 @@ class JWST(datasets.GeneratorBasedBuilder):
                 feature={
                     "band": Value("string"),
                     "flux": Array2D(
-                        shape=(self.config.image_size, self.config.image_size), dtype="float32"
+                        shape=(self.config.image_size, self.config.image_size),
+                        dtype="float32",
                     ),
                     "ivar": Array2D(
-                        shape=(self.config.image_size, self.config.image_size), dtype="float32"
+                        shape=(self.config.image_size, self.config.image_size),
+                        dtype="float32",
                     ),
                     "mask": Array2D(
-                        shape=(self.config.image_size, self.config.image_size), dtype="bool"
+                        shape=(self.config.image_size, self.config.image_size),
+                        dtype="bool",
                     ),
                     "psf_fwhm": Value("float32"),
                     "scale": Value("float32"),
@@ -229,7 +242,9 @@ class JWST(datasets.GeneratorBasedBuilder):
 
         features["object_id"] = Value("string")
 
-        ACKNOWLEDGEMENTS = "\n".join([f"% {line}" for line in _ACKNOWLEDGEMENTS.split("\n")])
+        ACKNOWLEDGEMENTS = "\n".join(
+            [f"% {line}" for line in _ACKNOWLEDGEMENTS.split("\n")]
+        )
 
         return datasets.DatasetInfo(
             # This is the description that will appear on the datasets page.
@@ -260,8 +275,7 @@ class JWST(datasets.GeneratorBasedBuilder):
         return splits
 
     def _generate_examples(self, files, object_ids=None):
-        """Yields examples as (key, example) tuples.
-        """
+        """Yields examples as (key, example) tuples."""
         for j, file in enumerate(files):
             with h5py.File(file, "r") as data:
                 if object_ids is not None:
@@ -269,7 +283,7 @@ class JWST(datasets.GeneratorBasedBuilder):
 
                 else:
                     keys = data["object_id"][:]
-                    
+
                 # Preparing an index for fast searching through the catalog
                 sort_index = np.argsort(data["object_id"][:])
                 sorted_ids = data["object_id"][:][sort_index]

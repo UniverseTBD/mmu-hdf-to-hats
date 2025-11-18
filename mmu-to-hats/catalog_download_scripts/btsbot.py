@@ -71,100 +71,100 @@ _LICENSE = "CC BY 4.0"
 _VERSION = "1.0.0"
 
 _FLOAT_FEATURES = [
-    'jd',
-    'diffmaglim',
-    'magpsf',
-    'sigmapsf',
-    'chipsf',
-    'magap',
-    'sigmagap',
-    'distnr',
-    'magnr',
-    'chinr',
-    'sharpnr',
-    'sky',
-    'magdiff',
-    'fwhm',
-    'classtar',
-    'mindtoedge',
-    'seeratio',
-    'magapbig',
-    'sigmagapbig',
-    'sgmag1',
-    'srmag1',
-    'simag1',
-    'szmag1',
-    'sgscore1',
-    'distpsnr1',
-    'jdstarthist',
-    'scorr',
-    'sgmag2',
-    'srmag2',
-    'simag2',
-    'szmag2',
-    'sgscore2',
-    'distpsnr2',
-    'sgmag3',
-    'srmag3',
-    'simag3',
-    'szmag3',
-    'sgscore3',
-    'distpsnr3',
-    'jdstartref',
-    'dsnrms',
-    'ssnrms',
-    'magzpsci',
-    'magzpsciunc',
-    'magzpscirms',
-    'clrcoeff',
-    'clrcounc',
-    'neargaia',
-    'neargaiabright',
-    'maggaia',
-    'maggaiabright',
-    'exptime',
-    'drb',
-    'acai_h',
-    'acai_v',
-    'acai_o',
-    'acai_n',
-    'acai_b',
-    'new_drb',
-    'peakmag',
-    'maxmag',
-    'peakmag_so_far',
-    'maxmag_so_far',
-    'age',
-    'days_since_peak',
-    'days_to_peak',
+    "jd",
+    "diffmaglim",
+    "magpsf",
+    "sigmapsf",
+    "chipsf",
+    "magap",
+    "sigmagap",
+    "distnr",
+    "magnr",
+    "chinr",
+    "sharpnr",
+    "sky",
+    "magdiff",
+    "fwhm",
+    "classtar",
+    "mindtoedge",
+    "seeratio",
+    "magapbig",
+    "sigmagapbig",
+    "sgmag1",
+    "srmag1",
+    "simag1",
+    "szmag1",
+    "sgscore1",
+    "distpsnr1",
+    "jdstarthist",
+    "scorr",
+    "sgmag2",
+    "srmag2",
+    "simag2",
+    "szmag2",
+    "sgscore2",
+    "distpsnr2",
+    "sgmag3",
+    "srmag3",
+    "simag3",
+    "szmag3",
+    "sgscore3",
+    "distpsnr3",
+    "jdstartref",
+    "dsnrms",
+    "ssnrms",
+    "magzpsci",
+    "magzpsciunc",
+    "magzpscirms",
+    "clrcoeff",
+    "clrcounc",
+    "neargaia",
+    "neargaiabright",
+    "maggaia",
+    "maggaiabright",
+    "exptime",
+    "drb",
+    "acai_h",
+    "acai_v",
+    "acai_o",
+    "acai_n",
+    "acai_b",
+    "new_drb",
+    "peakmag",
+    "maxmag",
+    "peakmag_so_far",
+    "maxmag_so_far",
+    "age",
+    "days_since_peak",
+    "days_to_peak",
 ]
 
 _INT_FEATURES = [
-    'label',
-    'fid',
-    'programid',
-    'object_id',
-    'field',
-    'nneg',
-    'nbad',
-    'ndethist',
-    'ncovhist',
-    'nmtchps',
-    'nnotdet',
-    'N',
+    "label",
+    "fid",
+    "programid",
+    "object_id",
+    "field",
+    "nneg",
+    "nbad",
+    "ndethist",
+    "ncovhist",
+    "nmtchps",
+    "nnotdet",
+    "N",
 ]
 
 _BOOL_FEATURES = [
-    'isdiffpos',
-    'is_SN',
-    'near_threshold',
-    'is_rise',
+    "isdiffpos",
+    "is_SN",
+    "near_threshold",
+    "is_rise",
 ]
 
 _STRING_FEATURES = [
-    'OBJECT_ID_',
-    'source_set',
-    'split',
+    "OBJECT_ID_",
+    "source_set",
+    "split",
 ]
 
 
@@ -174,47 +174,54 @@ class BTSbot(datasets.GeneratorBasedBuilder):
     VERSION = _VERSION
     BUILDER_CONFIGS = [
         datasets.BuilderConfig(
-            name="BTSbot", 
+            name="BTSbot",
             version=VERSION,
-            data_files=DataFilesPatternsDict.from_patterns({
-                'train': ['data/healpix=*/train_001-of-001.hdf5'],
-                'val': ['data/healpix=*/val_001-of-001.hdf5'],
-                'test': ['data/healpix=*/test_001-of-001.hdf5'],
-                }),
-            description="BTSbot dataset with train, val, and test splits."
+            data_files=DataFilesPatternsDict.from_patterns(
+                {
+                    "train": ["data/healpix=*/train_001-of-001.hdf5"],
+                    "val": ["data/healpix=*/val_001-of-001.hdf5"],
+                    "test": ["data/healpix=*/test_001-of-001.hdf5"],
+                }
             ),
+            description="BTSbot dataset with train, val, and test splits.",
+        ),
     ]
 
     DEFAULT_CONFIG_NAME = "BTSbot"
 
     _image_size = 63
-    _views = ['science', 'reference', 'difference']
+    _views = ["science", "reference", "difference"]
 
     @classmethod
     def _info(self):
-        """ Defines the features available in this dataset.
-        """
+        """Defines the features available in this dataset."""
         # Starting with all features common to image datasets
         features = {
-            'image': Sequence(feature={
-                'band': Value('string'),
-                'view': Value('string'),
-                'array': Array2D(shape=(self._image_size, self._image_size), dtype='float32'),
-                'scale': Value('float32'),
-            })
+            "image": Sequence(
+                feature={
+                    "band": Value("string"),
+                    "view": Value("string"),
+                    "array": Array2D(
+                        shape=(self._image_size, self._image_size), dtype="float32"
+                    ),
+                    "scale": Value("float32"),
+                }
+            )
         }
         # Adding all values from the catalog
         for f in _FLOAT_FEATURES:
-            features[f] = Value('float32')
+            features[f] = Value("float32")
         for f in _INT_FEATURES:
             # NOTE: includes object_id
-            features[f] = Value('int64')
+            features[f] = Value("int64")
         for f in _BOOL_FEATURES:
-            features[f] = Value('bool')
+            features[f] = Value("bool")
         for f in _STRING_FEATURES:
-            features[f] = Value('string')
+            features[f] = Value("string")
 
-        ACKNOWLEDGEMENTS = "\n".join([f"% {line}" for line in _ACKNOWLEDGEMENTS.split("\n")])
+        ACKNOWLEDGEMENTS = "\n".join(
+            [f"% {line}" for line in _ACKNOWLEDGEMENTS.split("\n")]
+        )
 
         return datasets.DatasetInfo(
             # This is the description that will appear on the datasets page.
@@ -228,7 +235,7 @@ class BTSbot(datasets.GeneratorBasedBuilder):
             # Citation for the dataset
             citation=ACKNOWLEDGEMENTS + "\n" + _CITATION,
         )
-    
+
     def _split_generators(self, dl_manager):
         """We handle string, list and dicts in datafiles"""
         if not self.config.data_files:
@@ -243,44 +250,43 @@ class BTSbot(datasets.GeneratorBasedBuilder):
                 datasets.SplitGenerator(name=split_name, gen_kwargs={"files": files})
             )
         return splits
-    
+
     def _generate_examples(self, files, object_ids=None):
-        """ Yields examples as (key, example) tuples.
-        """
+        """Yields examples as (key, example) tuples."""
         for j, file in enumerate(files):
             with h5py.File(file, "r") as data:
                 if object_ids is not None:
                     keys = object_ids[j]
                 else:
                     keys = data["object_id"]
-                
+
                 # Preparing an index for fast searching through the catalog
                 sort_index = np.argsort(data["object_id"])
                 sorted_ids = data["object_id"][:][sort_index]
 
                 for k in keys:
-                    # Extract the indices of requested ids in the catalog 
+                    # Extract the indices of requested ids in the catalog
                     i = sort_index[np.searchsorted(sorted_ids, k)]
                     # Parse image data
                     example = {
-                        'image': [
+                        "image": [
                             {
-                                'band': data['band'][i],
-                                'view': view,
-                                'array': data['image_triplet'][i, :, :, j],
-                                'scale': data['image_scale'][i],
+                                "band": data["band"][i],
+                                "view": view,
+                                "array": data["image_triplet"][i, :, :, j],
+                                "scale": data["image_scale"][i],
                             }
                             for j, view in enumerate(self._views)
                         ]
                     }
                     for f in _FLOAT_FEATURES:
-                        example[f] = data[f][i].astype('float32')
+                        example[f] = data[f][i].astype("float32")
                     for f in _INT_FEATURES:
                         # NOTE: includes object_id
-                        example[f] = data[f][i].astype('int64')
+                        example[f] = data[f][i].astype("int64")
                     for f in _BOOL_FEATURES:
-                        example[f] = data[f][i].astype('bool')
+                        example[f] = data[f][i].astype("bool")
                     for f in _STRING_FEATURES:
-                        example[f] = data[f][i].astype('str')
+                        example[f] = data[f][i].astype("str")
 
-                    yield str(data['object_id'][i]), example
+                    yield str(data["object_id"][i]), example

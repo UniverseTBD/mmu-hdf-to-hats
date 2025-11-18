@@ -14,7 +14,6 @@
 # TODO: Address all TODOs and remove all explanatory comments
 """TODO: Add a description here."""
 
-
 import csv
 import json
 import os
@@ -55,13 +54,8 @@ _LICENSE = ""
 
 _VERSION = "1.0.0"
 
-_FLOAT_FEATURES = [
-    'REDSHIFT', 
-    'REDFLAG', 
-    'EXPTIME', 
-    'NORM', 
-    'MAG'
-]
+_FLOAT_FEATURES = ["REDSHIFT", "REDFLAG", "EXPTIME", "NORM", "MAG"]
+
 
 class VIPERS(datasets.GeneratorBasedBuilder):
     """VIPERS Full Catalog"""
@@ -69,19 +63,30 @@ class VIPERS(datasets.GeneratorBasedBuilder):
     VERSION = datasets.Version("1.0.0")
 
     BUILDER_CONFIGS = [
-        datasets.BuilderConfig(name="vipers_w1",
-                               version=VERSION,
-                               data_files=DataFilesPatternsDict.from_patterns({'train': ['vipers_w1/healpix=*/*.h5']}),
-                               description="VIPERS W1 Catalog"),
-        datasets.BuilderConfig(name="vipers_w4",
-                               version=VERSION,
-                               data_files=DataFilesPatternsDict.from_patterns({'train': ['vipers_w4/healpix=*/*.h5']}),
-                               description="VIPERS W4 Catalog"),
-        datasets.BuilderConfig(name="all",
-                               version=VERSION,
-                               data_files=DataFilesPatternsDict.from_patterns({'train': ['vipers_w1/healpix=*/*.h5', 
-                                                                                         'vipers_w4/healpix=*/*.h5']}),
-                               description="VIPERS Full Catalog")
+        datasets.BuilderConfig(
+            name="vipers_w1",
+            version=VERSION,
+            data_files=DataFilesPatternsDict.from_patterns(
+                {"train": ["vipers_w1/healpix=*/*.h5"]}
+            ),
+            description="VIPERS W1 Catalog",
+        ),
+        datasets.BuilderConfig(
+            name="vipers_w4",
+            version=VERSION,
+            data_files=DataFilesPatternsDict.from_patterns(
+                {"train": ["vipers_w4/healpix=*/*.h5"]}
+            ),
+            description="VIPERS W4 Catalog",
+        ),
+        datasets.BuilderConfig(
+            name="all",
+            version=VERSION,
+            data_files=DataFilesPatternsDict.from_patterns(
+                {"train": ["vipers_w1/healpix=*/*.h5", "vipers_w4/healpix=*/*.h5"]}
+            ),
+            description="VIPERS Full Catalog",
+        ),
     ]
 
     DEFAULT_CONFIG_NAME = "all"  # It's not mandatory to have a default configuration. Just use one if it make sense.
@@ -90,21 +95,25 @@ class VIPERS(datasets.GeneratorBasedBuilder):
         """Defines the dataset info."""
         features = datasets.Features(
             {
-                "spectrum": Sequence(feature={
-                    "flux": Value(dtype="float32"),
-                    "ivar": Value(dtype="float32"),
-                    "lambda": Value(dtype="float32"),
-                    "mask": Value(dtype="float32")
-                })
+                "spectrum": Sequence(
+                    feature={
+                        "flux": Value(dtype="float32"),
+                        "ivar": Value(dtype="float32"),
+                        "lambda": Value(dtype="float32"),
+                        "mask": Value(dtype="float32"),
+                    }
+                )
             }
         )
 
         for key in _FLOAT_FEATURES:
             features[key] = datasets.Value("float32")
 
-        features['object_id'] = Value(dtype="string")
+        features["object_id"] = Value(dtype="string")
 
-        ACKNOWLEDGEMENTS = "\n".join([f"% {line}" for line in _ACKNOWLEDGEMENTS.split("\n")])
+        ACKNOWLEDGEMENTS = "\n".join(
+            [f"% {line}" for line in _ACKNOWLEDGEMENTS.split("\n")]
+        )
 
         return datasets.DatasetInfo(
             description=_DESCRIPTION,
@@ -117,18 +126,22 @@ class VIPERS(datasets.GeneratorBasedBuilder):
     def _split_generators(self, dl_manager):
         """We handle string, list and dicts in datafiles"""
         if not self.config.data_files:
-            raise ValueError(f"At least one data file must be specified, but got data_files={self.config.data_files}")
+            raise ValueError(
+                f"At least one data file must be specified, but got data_files={self.config.data_files}"
+            )
         splits = []
         for split_name, files in self.config.data_files.items():
             if isinstance(files, str):
                 files = [files]
-            splits.append(datasets.SplitGenerator(name=split_name, gen_kwargs={"files": files})) 
+            splits.append(
+                datasets.SplitGenerator(name=split_name, gen_kwargs={"files": files})
+            )
         return splits
 
     def _generate_examples(self, files, object_ids=None):
         """Yeilds examples from the dataset"""
         for j, file_path in enumerate(files):
-            with h5py.File(file_path, "r") as data:    
+            with h5py.File(file_path, "r") as data:
                 if object_ids is not None:
                     keys = object_ids[j]
                 else:
@@ -139,15 +152,15 @@ class VIPERS(datasets.GeneratorBasedBuilder):
                 sorted_ids = data["object_id"][:][sort_index]
 
                 for k in keys:
-                    # Extract the indices of requested ids in the catalog 
+                    # Extract the indices of requested ids in the catalog
                     i = sort_index[np.searchsorted(sorted_ids, k)]
 
                     example = {
                         "spectrum": {
-                            "flux": data["spectrum_flux"][i] * 1e17, # normalize
-                            "ivar": 1/(data["spectrum_noise"][i] * 1e34), # normalize
+                            "flux": data["spectrum_flux"][i] * 1e17,  # normalize
+                            "ivar": 1 / (data["spectrum_noise"][i] * 1e34),  # normalize
                             "lambda": data["spectrum_wave"][i],
-                            "mask": data["spectrum_mask"][i]
+                            "mask": data["spectrum_mask"][i],
                         }
                     }
 

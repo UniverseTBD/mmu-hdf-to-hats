@@ -1,6 +1,7 @@
 """
 CSPTransformer: Clean class-based transformation from HDF5 to PyArrow tables.
 """
+
 import pyarrow as pa
 import numpy as np
 from catalog_functions.utils import BaseTransformer
@@ -25,12 +26,14 @@ class CSPTransformer(BaseTransformer):
         fields = []
 
         # Lightcurve struct with nested sequences (using mag instead of flux)
-        lightcurve_struct = pa.struct([
-            pa.field("band", pa.list_(pa.string())),
-            pa.field("time", pa.list_(pa.float32())),
-            pa.field("mag", pa.list_(pa.float32())),
-            pa.field("mag_err", pa.list_(pa.float32())),
-        ])
+        lightcurve_struct = pa.struct(
+            [
+                pa.field("band", pa.list_(pa.string())),
+                pa.field("time", pa.list_(pa.float32())),
+                pa.field("mag", pa.list_(pa.float32())),
+                pa.field("mag_err", pa.list_(pa.float32())),
+            ]
+        )
         fields.append(pa.field("lightcurve", lightcurve_struct))
 
         # Add all float features
@@ -65,7 +68,10 @@ class CSPTransformer(BaseTransformer):
         mag_data = data["mag"][:]
         mag_err_data = data["mag_err"][:]
         time_data = data["time"][:]
-        bands_data = [b.decode('utf-8') if isinstance(b, bytes) else str(b) for b in data["bands"][:]]
+        bands_data = [
+            b.decode("utf-8") if isinstance(b, bytes) else str(b)
+            for b in data["bands"][:]
+        ]
 
         # Create band indices for flattening
         n_bands = mag_data.shape[0]
@@ -74,7 +80,9 @@ class CSPTransformer(BaseTransformer):
         band_idxs = np.arange(n_bands).repeat(n_times).reshape(n_bands, -1)
 
         # Flatten and create lists
-        bands_list = [bands_data[band_idx] for band_idx in band_idxs.flatten().astype(int)]
+        bands_list = [
+            bands_data[band_idx] for band_idx in band_idxs.flatten().astype(int)
+        ]
         time_list = time_data.flatten().tolist()
         mag_list = mag_data.flatten().tolist()
         mag_err_list = mag_err_data.flatten().tolist()
@@ -88,8 +96,7 @@ class CSPTransformer(BaseTransformer):
         ]
 
         columns["lightcurve"] = pa.StructArray.from_arrays(
-            lightcurve_arrays,
-            names=["band", "time", "mag", "mag_err"]
+            lightcurve_arrays, names=["band", "time", "mag", "mag_err"]
         )
 
         # 2. Add float features (scalars in CSP)
@@ -100,13 +107,13 @@ class CSPTransformer(BaseTransformer):
         for f in self.STR_FEATURES:
             val = data[f][()]
             if isinstance(val, bytes):
-                val = val.decode('utf-8')
+                val = val.decode("utf-8")
             columns[f] = pa.array([str(val)])
 
         # 4. Add object_id (scalar in CSP)
         oid = data["object_id"][()]
         if isinstance(oid, bytes):
-            oid = oid.decode('utf-8')
+            oid = oid.decode("utf-8")
         columns["object_id"] = pa.array([str(oid)])
 
         # Create table with schema

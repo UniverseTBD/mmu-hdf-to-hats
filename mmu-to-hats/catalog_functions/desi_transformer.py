@@ -1,6 +1,7 @@
 """
 DESITransformer: Clean class-based transformation from HDF5 to PyArrow tables.
 """
+
 import pyarrow as pa
 import numpy as np
 from catalog_functions.utils import np_to_pyarrow_array, BaseTransformer
@@ -10,9 +11,7 @@ class DESITransformer(BaseTransformer):
     """Transforms DESI HDF5 files to PyArrow tables with proper schema."""
 
     # Feature group definitions from desi.py
-    BOOL_FEATURES = [
-        "ZWARN"
-    ]
+    BOOL_FEATURES = ["ZWARN"]
 
     FLOAT_FEATURES = [
         "Z",
@@ -42,13 +41,15 @@ class DESITransformer(BaseTransformer):
         fields = []
 
         # Spectrum struct with nested arrays
-        spectrum_struct = pa.struct([
-            pa.field("flux", pa.list_(pa.float32())),
-            pa.field("ivar", pa.list_(pa.float32())),
-            pa.field("lsf_sigma", pa.list_(pa.float32())),
-            pa.field("lambda", pa.list_(pa.float32())),
-            pa.field("mask", pa.list_(pa.bool_())),
-        ])
+        spectrum_struct = pa.struct(
+            [
+                pa.field("flux", pa.list_(pa.float32())),
+                pa.field("ivar", pa.list_(pa.float32())),
+                pa.field("lsf_sigma", pa.list_(pa.float32())),
+                pa.field("lambda", pa.list_(pa.float32())),
+                pa.field("mask", pa.list_(pa.bool_())),
+            ]
+        )
         fields.append(pa.field("spectrum", spectrum_struct))
 
         # Add all float features
@@ -97,8 +98,7 @@ class DESITransformer(BaseTransformer):
         ]
 
         columns["spectrum"] = pa.StructArray.from_arrays(
-            spectrum_arrays,
-            names=["flux", "ivar", "lsf_sigma", "lambda", "mask"]
+            spectrum_arrays, names=["flux", "ivar", "lsf_sigma", "lambda", "mask"]
         )
 
         # 2. Add float features
@@ -114,9 +114,7 @@ class DESITransformer(BaseTransformer):
             columns[f] = pa.array(data[f][:].astype(bool))
 
         # 5. Add object_id
-        columns["object_id"] = pa.array(
-            [str(oid) for oid in data["object_id"][:]]
-        )
+        columns["object_id"] = pa.array([str(oid) for oid in data["object_id"][:]])
 
         # Create table with schema
         schema = self.create_schema()

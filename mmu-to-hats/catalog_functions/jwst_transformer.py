@@ -1,6 +1,7 @@
 """
 JWSTTransformer: Clean class-based transformation from HDF5 to PyArrow tables.
 """
+
 import pyarrow as pa
 import numpy as np
 from catalog_functions.utils import BaseTransformer
@@ -11,8 +12,13 @@ class JWSTTransformer(BaseTransformer):
 
     # Feature group definitions from jwst.py
     FLOAT_FEATURES = [
-        'mag_auto', 'flux_radius', 'flux_auto', 'fluxerr_auto',
-        'cxx_image', 'cyy_image', 'cxy_image'
+        "mag_auto",
+        "flux_radius",
+        "flux_auto",
+        "fluxerr_auto",
+        "cxx_image",
+        "cyy_image",
+        "cxy_image",
     ]
 
     # Default image size (can vary by config)
@@ -23,14 +29,16 @@ class JWSTTransformer(BaseTransformer):
         fields = []
 
         # Image sequence with band, flux, ivar, mask, psf_fwhm, scale
-        image_struct = pa.struct([
-            pa.field("band", pa.string()),
-            pa.field("flux", pa.list_(pa.list_(pa.float32()))),  # 2D array
-            pa.field("ivar", pa.list_(pa.list_(pa.float32()))),  # 2D array
-            pa.field("mask", pa.list_(pa.list_(pa.bool_()))),    # 2D array
-            pa.field("psf_fwhm", pa.float32()),
-            pa.field("scale", pa.float32()),
-        ])
+        image_struct = pa.struct(
+            [
+                pa.field("band", pa.string()),
+                pa.field("flux", pa.list_(pa.list_(pa.float32()))),  # 2D array
+                pa.field("ivar", pa.list_(pa.list_(pa.float32()))),  # 2D array
+                pa.field("mask", pa.list_(pa.list_(pa.bool_()))),  # 2D array
+                pa.field("psf_fwhm", pa.float32()),
+                pa.field("scale", pa.float32()),
+            ]
+        )
         fields.append(pa.field("image", pa.list_(image_struct)))
 
         # Add all float features
@@ -73,7 +81,7 @@ class JWSTTransformer(BaseTransformer):
                 # Get band name from data
                 band = image_band[i][j]
                 if isinstance(band, bytes):
-                    band = band.decode('utf-8')
+                    band = band.decode("utf-8")
 
                 # Convert 2D arrays to lists of lists
                 flux_2d = image_flux[i][j]
@@ -85,14 +93,16 @@ class JWSTTransformer(BaseTransformer):
                 mask_2d = image_mask[i][j].astype(bool)
                 mask_list = [row.tolist() for row in mask_2d]
 
-                images_for_object.append({
-                    'band': band,
-                    'flux': flux_list,
-                    'ivar': ivar_list,
-                    'mask': mask_list,
-                    'psf_fwhm': float(image_psf_fwhm[i][j]),
-                    'scale': float(image_scale[i][j])
-                })
+                images_for_object.append(
+                    {
+                        "band": band,
+                        "flux": flux_list,
+                        "ivar": ivar_list,
+                        "mask": mask_list,
+                        "psf_fwhm": float(image_psf_fwhm[i][j]),
+                        "scale": float(image_scale[i][j]),
+                    }
+                )
             image_lists.append(images_for_object)
 
         # Create struct arrays for images
@@ -104,21 +114,24 @@ class JWSTTransformer(BaseTransformer):
         scale_arrays = []
 
         for obj_images in image_lists:
-            band_arrays.append([img['band'] for img in obj_images])
-            flux_arrays.append([img['flux'] for img in obj_images])
-            ivar_arrays.append([img['ivar'] for img in obj_images])
-            mask_arrays.append([img['mask'] for img in obj_images])
-            psf_fwhm_arrays.append([img['psf_fwhm'] for img in obj_images])
-            scale_arrays.append([img['scale'] for img in obj_images])
+            band_arrays.append([img["band"] for img in obj_images])
+            flux_arrays.append([img["flux"] for img in obj_images])
+            ivar_arrays.append([img["ivar"] for img in obj_images])
+            mask_arrays.append([img["mask"] for img in obj_images])
+            psf_fwhm_arrays.append([img["psf_fwhm"] for img in obj_images])
+            scale_arrays.append([img["scale"] for img in obj_images])
 
-        image_structs = pa.StructArray.from_arrays([
-            pa.array(band_arrays, type=pa.list_(pa.string())),
-            pa.array(flux_arrays, type=pa.list_(pa.list_(pa.list_(pa.float32())))),
-            pa.array(ivar_arrays, type=pa.list_(pa.list_(pa.list_(pa.float32())))),
-            pa.array(mask_arrays, type=pa.list_(pa.list_(pa.list_(pa.bool_())))),
-            pa.array(psf_fwhm_arrays, type=pa.list_(pa.float32())),
-            pa.array(scale_arrays, type=pa.list_(pa.float32())),
-        ], names=["band", "flux", "ivar", "mask", "psf_fwhm", "scale"])
+        image_structs = pa.StructArray.from_arrays(
+            [
+                pa.array(band_arrays, type=pa.list_(pa.string())),
+                pa.array(flux_arrays, type=pa.list_(pa.list_(pa.list_(pa.float32())))),
+                pa.array(ivar_arrays, type=pa.list_(pa.list_(pa.list_(pa.float32())))),
+                pa.array(mask_arrays, type=pa.list_(pa.list_(pa.list_(pa.bool_())))),
+                pa.array(psf_fwhm_arrays, type=pa.list_(pa.float32())),
+                pa.array(scale_arrays, type=pa.list_(pa.float32())),
+            ],
+            names=["band", "flux", "ivar", "mask", "psf_fwhm", "scale"],
+        )
 
         columns["image"] = image_structs
 
@@ -127,9 +140,7 @@ class JWSTTransformer(BaseTransformer):
             columns[f] = pa.array(data[f][:].astype(np.float32))
 
         # 3. Add object_id
-        columns["object_id"] = pa.array(
-            [str(oid) for oid in data["object_id"][:]]
-        )
+        columns["object_id"] = pa.array([str(oid) for oid in data["object_id"][:]])
 
         # Create table with schema
         schema = self.create_schema()

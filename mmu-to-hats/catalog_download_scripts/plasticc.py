@@ -51,14 +51,14 @@ _LICENSE = "CC BY 4.0"
 _VERSION = "1.0.0"
 
 _FLOAT_FEATURES = [
-        'hostgal_photoz',
-        'hostgal_specz',
-        'redshift',
-    ]
+    "hostgal_photoz",
+    "hostgal_specz",
+    "redshift",
+]
 
 _STR_FEATURES = [
-        'obj_type',
-    ]
+    "obj_type",
+]
 
 _CLASS_MAPPING = {
     90: "SNIa",
@@ -80,55 +80,71 @@ _CLASS_MAPPING = {
     992: "ILOT",
     993: "CaRT",
     994: "PISN",
-    995: "MicroLens-String"
+    995: "MicroLens-String",
 }
 
-_BANDS = ['u', 'g', 'r', 'i', 'z', 'Y']
+_BANDS = ["u", "g", "r", "i", "z", "Y"]
+
 
 class PLAsTiCC(datasets.GeneratorBasedBuilder):
-
     VERSION = _VERSION
 
     BUILDER_CONFIGS = [
         datasets.BuilderConfig(
             name="plasticc",
             version=VERSION,
-            data_files=DataFilesPatternsDict.from_patterns({"train": ["data/healpix=*/train*.hdf5"], "test": ["data/healpix=*/test*.hdf5"]}),
+            data_files=DataFilesPatternsDict.from_patterns(
+                {
+                    "train": ["data/healpix=*/train*.hdf5"],
+                    "test": ["data/healpix=*/test*.hdf5"],
+                }
+            ),
             description="train: plasticc train (spectroscopic), test: plasticc test (photometric)",
         ),
-        datasets.BuilderConfig(name="train_only",
-                                version=VERSION,
-                                data_files=DataFilesPatternsDict.from_patterns({"train": ["data/healpix=*/train*.hdf5"]}),
-                                description="load train (spectroscopic) data only"),
-        datasets.BuilderConfig(name="test_only",
-                                version=VERSION,
-                                data_files=DataFilesPatternsDict.from_patterns({"train": ["data/healpix=*/test*.hdf5"]}),
-                                description="load test (photometric) data only"),
+        datasets.BuilderConfig(
+            name="train_only",
+            version=VERSION,
+            data_files=DataFilesPatternsDict.from_patterns(
+                {"train": ["data/healpix=*/train*.hdf5"]}
+            ),
+            description="load train (spectroscopic) data only",
+        ),
+        datasets.BuilderConfig(
+            name="test_only",
+            version=VERSION,
+            data_files=DataFilesPatternsDict.from_patterns(
+                {"train": ["data/healpix=*/test*.hdf5"]}
+            ),
+            description="load test (photometric) data only",
+        ),
     ]
 
     DEFAULT_CONFIG_NAME = "train_only"
 
     @classmethod
     def _info(self):
-        """ Defines the features available in this dataset.
-        """
+        """Defines the features available in this dataset."""
         # Starting with all features common to time series datasets
         features = {
-            'lightcurve': Sequence(feature={
-                'band': Value('string'),
-                'flux': Value('float32'),
-                'flux_err': Value('float32'),
-                'time': Value('float32'),
-            }),
+            "lightcurve": Sequence(
+                feature={
+                    "band": Value("string"),
+                    "flux": Value("float32"),
+                    "flux_err": Value("float32"),
+                    "time": Value("float32"),
+                }
+            ),
         }
         # Adding all values from the catalog
         for f in _FLOAT_FEATURES:
-            features[f] = Value('float32')
+            features[f] = Value("float32")
         for f in _STR_FEATURES:
-            features[f] = Value('string')
+            features[f] = Value("string")
         features["object_id"] = Value("string")
 
-        ACKNOWLEDGEMENTS = "\n".join([f"% {line}" for line in _ACKNOWLEDGEMENTS.split("\n")])
+        ACKNOWLEDGEMENTS = "\n".join(
+            [f"% {line}" for line in _ACKNOWLEDGEMENTS.split("\n")]
+        )
 
         return datasets.DatasetInfo(
             # This is the description that will appear on the datasets page.
@@ -142,7 +158,6 @@ class PLAsTiCC(datasets.GeneratorBasedBuilder):
             # Citation for the dataset
             citation=ACKNOWLEDGEMENTS + "\n" + _CITATION,
         )
-
 
     def _split_generators(self, dl_manager):
         """We handle string, list and dicts in datafiles"""
@@ -160,8 +175,7 @@ class PLAsTiCC(datasets.GeneratorBasedBuilder):
         return splits
 
     def _generate_examples(self, files, object_ids=None):
-        """ Yields examples as (key, example) tuples.
-        """
+        """Yields examples as (key, example) tuples."""
         for j, file in enumerate(files):
             with h5py.File(file, "r") as data:
                 if object_ids is not None:
@@ -177,26 +191,32 @@ class PLAsTiCC(datasets.GeneratorBasedBuilder):
                     # Extract the indices of requested ids in the catalog
                     i = sort_index[np.searchsorted(sorted_ids, k)]
                     # data['lightcurve'][i] is a single lightcurve of shape n_bands x 3 x seq_len
-                    lightcurve = data['lightcurve'][i]
+                    lightcurve = data["lightcurve"][i]
                     n_bands, _, seq_len = lightcurve.shape
-                    band_arr = np.array([np.ones(seq_len) * band for band in range(n_bands)]).flatten().astype('int')
+                    band_arr = (
+                        np.array([np.ones(seq_len) * band for band in range(n_bands)])
+                        .flatten()
+                        .astype("int")
+                    )
                     # convert to dict of lists
-                    example = {'lightcurve':  {
-                                    "band": np.array(_BANDS)[band_arr],
-                                    "time": lightcurve[:, 0].flatten(),
-                                    "flux": lightcurve[:, 1].flatten(),
-                                    "flux_err": lightcurve[:, 2].flatten(),
-                        }}
+                    example = {
+                        "lightcurve": {
+                            "band": np.array(_BANDS)[band_arr],
+                            "time": lightcurve[:, 0].flatten(),
+                            "flux": lightcurve[:, 1].flatten(),
+                            "flux_err": lightcurve[:, 2].flatten(),
+                        }
+                    }
                     # Add all other requested features
                     for f in _FLOAT_FEATURES:
-                        example[f] = data[f][i].astype('float32')
+                        example[f] = data[f][i].astype("float32")
                     for f in _STR_FEATURES:
                         if f == "obj_type":
                             example[f] = _CLASS_MAPPING[data[f][i]]
                         else:
-                            example[f] = data[f][i].astype('str')
+                            example[f] = data[f][i].astype("str")
 
                     # Add object_id
                     example["object_id"] = str(data["object_id"][i])
 
-                    yield str(data['object_id'][i]), example
+                    yield str(data["object_id"][i]), example

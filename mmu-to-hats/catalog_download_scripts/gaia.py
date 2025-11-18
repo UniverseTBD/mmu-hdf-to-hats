@@ -172,7 +172,9 @@ class Gaia(datasets.GeneratorBasedBuilder):
             "dec": Value(dtype="float32"),
         }
 
-        ACKNOWLEDGEMENTS = "\n".join([f"% {line}" for line in _ACKNOWLEDGEMENTS.split("\n")])
+        ACKNOWLEDGEMENTS = "\n".join(
+            [f"% {line}" for line in _ACKNOWLEDGEMENTS.split("\n")]
+        )
 
         return datasets.DatasetInfo(
             # This is the description that will appear on the datasets page.
@@ -238,4 +240,3 @@ class Gaia(datasets.GeneratorBasedBuilder):
                 datasets.SplitGenerator(name=split_name, gen_kwargs={"files": files})
             )
         return splits
-

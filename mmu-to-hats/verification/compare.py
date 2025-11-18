@@ -15,7 +15,7 @@ def load_table(file_path):
         raise FileNotFoundError(f"File or directory not found: {file_path}")
 
     # Try loading as parquet file
-    if path.is_file() and path.suffix == '.parquet':
+    if path.is_file() and path.suffix == ".parquet":
         return pq.read_table(file_path)
 
     # Try loading as datasets directory
@@ -35,14 +35,14 @@ def compare_tables(table1, table2, label1="Table 1", label2="Table 2"):
     print(f"{label2}: {table2.num_rows} rows, {table2.num_columns} columns")
 
     # Check same number of rows
-    assert table1.num_rows == table2.num_rows, \
+    assert table1.num_rows == table2.num_rows, (
         f"Row count mismatch: {table1.num_rows} vs {table2.num_rows}"
+    )
 
     # Check same columns (order doesn't matter)
     cols1 = set(table1.column_names)
     cols2 = set(table2.column_names)
-    assert cols1 == cols2, \
-        f"Column mismatch: {cols1.symmetric_difference(cols2)}"
+    assert cols1 == cols2, f"Column mismatch: {cols1.symmetric_difference(cols2)}"
 
     # Find a sortable column (exclude list and struct types)
     sort_column = None
@@ -71,7 +71,9 @@ def compare_tables(table1, table2, label1="Table 1", label2="Table 2"):
         # Use pyarrow's equal function which handles nulls and nested types
         if not col1.equals(col2):
             print(f"MISMATCH!")
-            print(f"    First difference at row: {pc.index(pc.not_equal(col1, col2), True).as_py()}")
+            print(
+                f"    First difference at row: {pc.index(pc.not_equal(col1, col2), True).as_py()}"
+            )
             all_match = False
         else:
             print("OK")
@@ -86,7 +88,7 @@ def compare_tables(table1, table2, label1="Table 1", label2="Table 2"):
 def main():
     # Parse command line arguments
     parser = argparse.ArgumentParser(
-        description='Compare two PyArrow tables from parquet files or datasets directories',
+        description="Compare two PyArrow tables from parquet files or datasets directories",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -98,12 +100,14 @@ Examples:
 
   # Compare two datasets directories
   python compare.py data/dataset1 data/dataset2
-        """
+        """,
     )
-    parser.add_argument('file1', type=str,
-                        help='First file (parquet) or directory (datasets)')
-    parser.add_argument('file2', type=str,
-                        help='Second file (parquet) or directory (datasets)')
+    parser.add_argument(
+        "file1", type=str, help="First file (parquet) or directory (datasets)"
+    )
+    parser.add_argument(
+        "file2", type=str, help="Second file (parquet) or directory (datasets)"
+    )
     args = parser.parse_args()
 
     # Load both tables

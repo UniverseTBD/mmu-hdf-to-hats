@@ -1,6 +1,7 @@
 """
 YSETransformer: Clean class-based transformation from HDF5 to PyArrow tables.
 """
+
 import pyarrow as pa
 import numpy as np
 from catalog_functions.utils import BaseTransformer
@@ -10,26 +11,23 @@ class YSETransformer(BaseTransformer):
     """Transforms YSE DR1 HDF5 files to PyArrow tables with proper schema."""
 
     # Feature definitions from yse.py
-    STR_FEATURES = [
-        "obj_type"
-    ]
+    STR_FEATURES = ["obj_type"]
 
-    FLOAT_FEATURES = [
-        "redshift",
-        "host_log_mass"
-    ]
+    FLOAT_FEATURES = ["redshift", "host_log_mass"]
 
     def create_schema(self):
         """Create the output PyArrow schema."""
         fields = []
 
         # Lightcurve struct with nested sequences
-        lightcurve_struct = pa.struct([
-            pa.field("band", pa.list_(pa.string())),
-            pa.field("time", pa.list_(pa.float32())),
-            pa.field("flux", pa.list_(pa.float32())),
-            pa.field("flux_err", pa.list_(pa.float32())),
-        ])
+        lightcurve_struct = pa.struct(
+            [
+                pa.field("band", pa.list_(pa.string())),
+                pa.field("time", pa.list_(pa.float32())),
+                pa.field("flux", pa.list_(pa.float32())),
+                pa.field("flux_err", pa.list_(pa.float32())),
+            ]
+        )
         fields.append(pa.field("lightcurve", lightcurve_struct))
 
         # Add all float features
@@ -70,7 +68,10 @@ class YSETransformer(BaseTransformer):
 
         for i in range(n_objects):
             lc = lightcurve_data[i]
-            bands = [b.decode('utf-8') if isinstance(b, bytes) else str(b) for b in lc["band"]]
+            bands = [
+                b.decode("utf-8") if isinstance(b, bytes) else str(b)
+                for b in lc["band"]
+            ]
             times = lc["time"].astype(np.float32).tolist()
             fluxes = lc["flux"].astype(np.float32).tolist()
             flux_errs = lc["flux_err"].astype(np.float32).tolist()
@@ -88,8 +89,7 @@ class YSETransformer(BaseTransformer):
         ]
 
         columns["lightcurve"] = pa.StructArray.from_arrays(
-            lightcurve_arrays,
-            names=["band", "time", "flux", "flux_err"]
+            lightcurve_arrays, names=["band", "time", "flux", "flux_err"]
         )
 
         # 2. Add float features
@@ -98,11 +98,19 @@ class YSETransformer(BaseTransformer):
 
         # 3. Add string features
         for f in self.STR_FEATURES:
-            columns[f] = pa.array([str(x.decode('utf-8') if isinstance(x, bytes) else x) for x in data[f][:]])
+            columns[f] = pa.array(
+                [
+                    str(x.decode("utf-8") if isinstance(x, bytes) else x)
+                    for x in data[f][:]
+                ]
+            )
 
         # 4. Add object_id
         columns["object_id"] = pa.array(
-            [str(oid.decode('utf-8') if isinstance(oid, bytes) else oid) for oid in data["object_id"][:]]
+            [
+                str(oid.decode("utf-8") if isinstance(oid, bytes) else oid)
+                for oid in data["object_id"][:]
+            ]
         )
 
         # Create table with schema

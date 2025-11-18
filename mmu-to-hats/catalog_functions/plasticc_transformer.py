@@ -1,6 +1,7 @@
 """
 PLAsTiCCTransformer: Clean class-based transformation from HDF5 to PyArrow tables.
 """
+
 import pyarrow as pa
 import numpy as np
 from catalog_functions.utils import np_to_pyarrow_array, BaseTransformer
@@ -11,28 +12,30 @@ class PLAsTiCCTransformer(BaseTransformer):
 
     # Feature group definitions from plasticc.py
     FLOAT_FEATURES = [
-        'hostgal_photoz',
-        'hostgal_specz',
-        'redshift',
+        "hostgal_photoz",
+        "hostgal_specz",
+        "redshift",
     ]
 
     STR_FEATURES = [
-        'obj_type',
+        "obj_type",
     ]
 
-    BANDS = ['u', 'g', 'r', 'i', 'z', 'Y']
+    BANDS = ["u", "g", "r", "i", "z", "Y"]
 
     def create_schema(self):
         """Create the output PyArrow schema."""
         fields = []
 
         # Lightcurve struct with nested sequences
-        lightcurve_struct = pa.struct([
-            pa.field("band", pa.list_(pa.string())),
-            pa.field("time", pa.list_(pa.float32())),
-            pa.field("flux", pa.list_(pa.float32())),
-            pa.field("flux_err", pa.list_(pa.float32())),
-        ])
+        lightcurve_struct = pa.struct(
+            [
+                pa.field("band", pa.list_(pa.string())),
+                pa.field("time", pa.list_(pa.float32())),
+                pa.field("flux", pa.list_(pa.float32())),
+                pa.field("flux_err", pa.list_(pa.float32())),
+            ]
+        )
         fields.append(pa.field("lightcurve", lightcurve_struct))
 
         # Add all float features
@@ -82,7 +85,7 @@ class PLAsTiCCTransformer(BaseTransformer):
             992: "ILOT",
             993: "CaRT",
             994: "PISN",
-            995: "MicroLens-String"
+            995: "MicroLens-String",
         }
 
         # 1. Create lightcurve struct column
@@ -100,7 +103,11 @@ class PLAsTiCCTransformer(BaseTransformer):
 
         for i in range(n_objects):
             lc = lightcurve[i]  # Shape: [n_bands, 3, seq_len]
-            band_arr = np.array([np.ones(seq_len) * band for band in range(n_bands)]).flatten().astype('int')
+            band_arr = (
+                np.array([np.ones(seq_len) * band for band in range(n_bands)])
+                .flatten()
+                .astype("int")
+            )
             bands = np.array(self.BANDS)[band_arr]
             times = lc[:, 0].flatten()
             fluxes = lc[:, 1].flatten()
@@ -119,8 +126,7 @@ class PLAsTiCCTransformer(BaseTransformer):
         ]
 
         columns["lightcurve"] = pa.StructArray.from_arrays(
-            lightcurve_arrays,
-            names=["band", "time", "flux", "flux_err"]
+            lightcurve_arrays, names=["band", "time", "flux", "flux_err"]
         )
 
         # 2. Add float features
@@ -135,9 +141,7 @@ class PLAsTiCCTransformer(BaseTransformer):
                 columns[f] = pa.array([str(x) for x in data[f][:]])
 
         # 4. Add object_id
-        columns["object_id"] = pa.array(
-            [str(oid) for oid in data["object_id"][:]]
-        )
+        columns["object_id"] = pa.array([str(oid) for oid in data["object_id"][:]])
 
         # Create table with schema
         schema = self.create_schema()

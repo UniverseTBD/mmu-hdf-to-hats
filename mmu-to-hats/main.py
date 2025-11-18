@@ -24,7 +24,9 @@ LOGGER = logging.getLogger(__name__)
 
 def available_transformers():
     transformers = []
-    for module_info in walk_packages(catalog_functions.__path__, catalog_functions.__name__ + "."):
+    for module_info in walk_packages(
+        catalog_functions.__path__, catalog_functions.__name__ + "."
+    ):
         *_, module_name = module_info.name.rsplit(".", maxsplit=1)
         if not module_name.endswith("_transformer"):
             continue
@@ -34,11 +36,17 @@ def available_transformers():
 
 
 def get_transformer(name):
-    module = importlib.import_module(catalog_functions.__name__ + f".{name}_transformer")
+    module = importlib.import_module(
+        catalog_functions.__name__ + f".{name}_transformer"
+    )
     classes = []
     for module_attr in dir(module):
         obj = getattr(module, module_attr)
-        if isinstance(obj, type) and issubclass(obj, BaseTransformer) and obj != BaseTransformer:
+        if (
+            isinstance(obj, type)
+            and issubclass(obj, BaseTransformer)
+            and obj != BaseTransformer
+        ):
             classes.append(obj)
     if len(classes) == 0:
         raise ValueError("No transformers found")
@@ -49,7 +57,14 @@ def get_transformer(name):
 
 def parse_args(argv):
     parser = argparse.ArgumentParser("Convert MMU dataset to HATS")
-    parser.add_argument("-c", "--transformer", required=True, type=str, help="one of the available catalog transformers", choices=available_transformers())
+    parser.add_argument(
+        "-c",
+        "--transformer",
+        required=True,
+        type=str,
+        help="one of the available catalog transformers",
+        choices=available_transformers(),
+    )
     parser.add_argument("-n", "--name", required=True, help="HATS catalog name")
     parser.add_argument(
         "-i", "--input", required=True, type=UPath, help="Input MMU dataset URI"
@@ -138,8 +153,7 @@ class MMUReader(InputReader):
                     yield table
                 else:
                     data = {
-                        col: h5_file[col][i : i + chunk_size]
-                        for col in read_columns
+                        col: h5_file[col][i : i + chunk_size] for col in read_columns
                     }
                     table = self.transform.dataset_to_table(data)
                     yield table
@@ -189,11 +203,15 @@ def main(argv=None):
     if cmd_args.debug:
         # Debug mode: use 1 worker and 1 thread for easier debugging with breakpoints
         client_kwargs = {"n_workers": 1, "threads_per_worker": 1, "processes": False}
-        LOGGER.info("Running in DEBUG mode (single worker, single thread, no separate processes)")
+        LOGGER.info(
+            "Running in DEBUG mode (single worker, single thread, no separate processes)"
+        )
     else:
         # Production mode: use multiple workers
         client_kwargs = {"n_workers": min(8, cpu_count()), "threads_per_worker": 1}
-        LOGGER.info(f"Running in PRODUCTION mode ({client_kwargs['n_workers']} workers)")
+        LOGGER.info(
+            f"Running in PRODUCTION mode ({client_kwargs['n_workers']} workers)"
+        )
 
     with Client(**client_kwargs) as client:
         LOGGER.info(f"Dask dashboard: {client.dashboard_link}")

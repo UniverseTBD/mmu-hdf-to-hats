@@ -69,18 +69,19 @@ _LICENSE = "MIT License"
 _VERSION = "1.0.0"
 
 _FLOAT_FEATURES = [
-    'ebv',
-    'flux_g',
-    'flux_r',
-    'flux_z',
-    'fiberflux_g',
-    'fiberflux_r',
-    'fiberflux_z',
-    'psfdepth_g',
-    'psfdepth_r',
-    'psfdepth_z',
-    'z_spec'
-    ]
+    "ebv",
+    "flux_g",
+    "flux_r",
+    "flux_z",
+    "fiberflux_g",
+    "fiberflux_r",
+    "fiberflux_z",
+    "psfdepth_g",
+    "psfdepth_r",
+    "psfdepth_z",
+    "z_spec",
+]
+
 
 class SSLLegacySurvey(datasets.GeneratorBasedBuilder):
     """TODO: Short description of my dataset."""
@@ -95,39 +96,48 @@ class SSLLegacySurvey(datasets.GeneratorBasedBuilder):
                 {"train": ["north/healpix=*/*.hdf5"]}
             ),
             description="DR9 Legacy Survey images from the Stein et al. sample",
-        ),        
-        datasets.BuilderConfig(name="stein_et_al_north", 
-                                version=VERSION, 
-                                data_files=DataFilesPatternsDict.from_patterns({'train': ['north/healpix=*/*.hdf5']}),
-                                description="DECaLS images from the northern sky."),
+        ),
+        datasets.BuilderConfig(
+            name="stein_et_al_north",
+            version=VERSION,
+            data_files=DataFilesPatternsDict.from_patterns(
+                {"train": ["north/healpix=*/*.hdf5"]}
+            ),
+            description="DECaLS images from the northern sky.",
+        ),
     ]
 
     DEFAULT_CONFIG_NAME = "stein_et_al"
 
     _pixel_scale = 0.262
     _image_size = 152
-    _bands = ['DES-G', 'DES-R', 'DES-Z']
+    _bands = ["DES-G", "DES-R", "DES-Z"]
 
     @classmethod
     def _info(self):
-        """ Defines the features available in this dataset.
-        """
+        """Defines the features available in this dataset."""
         # Starting with all features common to image datasets
         features = {
-            'image': Sequence(feature={
-                'band': Value('string'),
-                'flux': Array2D(shape=(self._image_size, self._image_size), dtype='float32'),
-                'psf_fwhm': Value('float32'),
-                'scale': Value('float32'),
-            })
+            "image": Sequence(
+                feature={
+                    "band": Value("string"),
+                    "flux": Array2D(
+                        shape=(self._image_size, self._image_size), dtype="float32"
+                    ),
+                    "psf_fwhm": Value("float32"),
+                    "scale": Value("float32"),
+                }
+            )
         }
         # Adding all values from the catalog
         for f in _FLOAT_FEATURES:
-            features[f] = Value('float32')
+            features[f] = Value("float32")
 
         features["object_id"] = Value("string")
 
-        ACKNOWLEDGEMENTS = "\n".join([f"% {line}" for line in _ACKNOWLEDGEMENTS.split("\n")])
+        ACKNOWLEDGEMENTS = "\n".join(
+            [f"% {line}" for line in _ACKNOWLEDGEMENTS.split("\n")]
+        )
 
         return datasets.DatasetInfo(
             # This is the description that will appear on the datasets page.
@@ -145,42 +155,51 @@ class SSLLegacySurvey(datasets.GeneratorBasedBuilder):
     def _split_generators(self, dl_manager):
         """We handle string, list and dicts in datafiles"""
         if not self.config.data_files:
-            raise ValueError(f"At least one data file must be specified, but got data_files={self.config.data_files}")
+            raise ValueError(
+                f"At least one data file must be specified, but got data_files={self.config.data_files}"
+            )
         splits = []
         for split_name, files in self.config.data_files.items():
             if isinstance(files, str):
                 files = [files]
-            splits.append(datasets.SplitGenerator(name=split_name, gen_kwargs={"files": files})) 
+            splits.append(
+                datasets.SplitGenerator(name=split_name, gen_kwargs={"files": files})
+            )
         return splits
 
     def _generate_examples(self, files, object_ids=None):
-        """ Yields examples as (key, example) tuples.
-        """
+        """Yields examples as (key, example) tuples."""
         for j, file in enumerate(files):
             with h5py.File(file, "r") as data:
                 if object_ids is not None:
                     keys = object_ids[j]
                 else:
                     keys = data["object_id"]
-                
+
                 # Preparing an index for fast searching through the catalog
                 sort_index = np.argsort(data["object_id"])
                 sorted_ids = data["object_id"][:][sort_index]
 
                 for k in keys:
-                    # Extract the indices of requested ids in the catalog 
+                    # Extract the indices of requested ids in the catalog
                     i = sort_index[np.searchsorted(sorted_ids, k)]
                     # Parse image data
-                    example = {'image':  [{'band': data['image_band'][i][j].decode('utf-8'),
-                               'flux': data['image_array'][i][j],
-                               'psf_fwhm': data['image_psf_fwhm'][i][j],
-                               'scale': data['image_scale'][i][j]} for j, _ in enumerate( self._bands )]
+                    example = {
+                        "image": [
+                            {
+                                "band": data["image_band"][i][j].decode("utf-8"),
+                                "flux": data["image_array"][i][j],
+                                "psf_fwhm": data["image_psf_fwhm"][i][j],
+                                "scale": data["image_scale"][i][j],
+                            }
+                            for j, _ in enumerate(self._bands)
+                        ]
                     }
                     # Add all other requested features
                     for f in _FLOAT_FEATURES:
-                        example[f] = data[f][i].astype('float32')
-                    
+                        example[f] = data[f][i].astype("float32")
+
                     # Add object_id
                     example["object_id"] = str(data["object_id"][i])
 
-                    yield str(data['object_id'][i]), example
+                    yield str(data["object_id"][i]), example
