@@ -4,6 +4,7 @@
 
 ```shell
 uv run python ./main.py \
+  --transformer=sdss \
   --input=https://users.flatironinstitute.org/~polymathic/data/MultimodalUniverse/v1/sdss/sdss/ \
   --output=./hats \
   --name=mmu_sdss_sdss \

@@ -3,8 +3,7 @@ PLAsTiCCTransformer: Clean class-based transformation from HDF5 to PyArrow table
 """
 import pyarrow as pa
 import numpy as np
-from catalog_functions.utils import np_to_pyarrow_array
-from catalog_functions.base_transformer import BaseTransformer
+from catalog_functions.utils import np_to_pyarrow_array, BaseTransformer
 
 
 class PLAsTiCCTransformer(BaseTransformer):

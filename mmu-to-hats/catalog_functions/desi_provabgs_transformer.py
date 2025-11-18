@@ -3,8 +3,7 @@ DESIPROVABGSTransformer: Clean class-based transformation from HDF5 to PyArrow t
 """
 import pyarrow as pa
 import numpy as np
-from catalog_functions.utils import np_to_pyarrow_array
-from catalog_functions.base_transformer import BaseTransformer
+from catalog_functions.utils import BaseTransformer
 
 
 class DESIPROVABGSTransformer(BaseTransformer):

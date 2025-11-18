@@ -1,12 +1,12 @@
 """
-PS1SNEIaTransformer: Clean class-based transformation from HDF5 to PyArrow tables.
+PS1SNeIaTransformer: Clean class-based transformation from HDF5 to PyArrow tables.
 """
 import pyarrow as pa
 import numpy as np
-from catalog_functions.base_transformer import BaseTransformer
+from catalog_functions.utils import BaseTransformer
 
 
-class PS1SNEIaTransformer(BaseTransformer):
+class PS1SNeIaTransformer(BaseTransformer):
     """Transforms Pan-STARRS1 SNe Ia HDF5 files to PyArrow tables with proper schema."""
 
     # Feature definitions from ps1_sne_ia.py

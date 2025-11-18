@@ -3,7 +3,7 @@ LegacySurveyTransformer: Clean class-based transformation from HDF5 to PyArrow t
 """
 import pyarrow as pa
 import numpy as np
-from catalog_functions.base_transformer import BaseTransformer
+from catalog_functions.utils import BaseTransformer
 
 
 class LegacySurveyTransformer(BaseTransformer):

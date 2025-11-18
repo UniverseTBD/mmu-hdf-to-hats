@@ -3,7 +3,7 @@ SSLLegacySurveyTransformer: Clean class-based transformation from HDF5 to PyArro
 """
 import pyarrow as pa
 import numpy as np
-from catalog_functions.base_transformer import BaseTransformer
+from catalog_functions.utils import BaseTransformer
 
 
 class SSLLegacySurveyTransformer(BaseTransformer):

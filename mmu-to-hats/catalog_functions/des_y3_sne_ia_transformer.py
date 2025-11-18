@@ -3,7 +3,7 @@ DESY3SNEIaTransformer: Clean class-based transformation from HDF5 to PyArrow tab
 """
 import pyarrow as pa
 import numpy as np
-from catalog_functions.base_transformer import BaseTransformer
+from catalog_functions.utils import BaseTransformer
 
 
 class DESY3SNEIaTransformer(BaseTransformer):

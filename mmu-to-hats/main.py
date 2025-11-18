@@ -1,9 +1,11 @@
 # for fast debugging run:
 #  python ./main.py   --input=https://users.flatironinstitute.org/~polymathic/data/MultimodalUniverse/v1/sdss/sdss/healpix=583/   --output=./hats   --name=mmu_sdss_sdss   --tmp-dir=./tmp   --max-rows=8192
 import argparse
+import importlib
 import logging
 import math
 from multiprocessing import cpu_count
+from pkgutil import walk_packages
 
 import h5py
 import numpy as np
@@ -14,17 +16,40 @@ from hats_import.catalog.file_readers import InputReader
 from hats_import.pipeline import pipeline_with_client
 from upath import UPath
 
-from catalog_functions.sdss_transformer import SDSSTransformer
+import catalog_functions
+from catalog_functions.utils import BaseTransformer
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
+
+
+def available_transformers():
+    transformers = []
+    for module_info in walk_packages(catalog_functions.__path__, catalog_functions.__name__ + "."):
+        *_, module_name = module_info.name.rsplit(".", maxsplit=1)
+        if not module_name.endswith("_transformer"):
+            continue
+        name = module_name.removesuffix("_transformer")
+        transformers.append(name)
+    return transformers
+
+
+def get_transformer(name):
+    module = importlib.import_module(catalog_functions.__name__ + f".{name}_transformer")
+    classes = []
+    for module_attr in dir(module):
+        obj = getattr(module, module_attr)
+        if isinstance(obj, type) and issubclass(obj, BaseTransformer) and obj != BaseTransformer:
+            classes.append(obj)
+    if len(classes) == 0:
+        raise ValueError("No transformers found")
+    if len(classes) >= 2:
+        raise ValueError(f"More than one transformer found: {classes}")
+    return classes[0]
+
 
 def parse_args(argv):
     parser = argparse.ArgumentParser("Convert MMU dataset to HATS")
+    parser.add_argument("-c", "--transformer", required=True, type=str, help="one of the available catalog transformers", choices=available_transformers())
     parser.add_argument("-n", "--name", required=True, help="HATS catalog name")
     parser.add_argument(
         "-i", "--input", required=True, type=UPath, help="Input MMU dataset URI"
@@ -126,10 +151,18 @@ def input_file_list(path: UPath) -> list[str]:
 
 
 def main(argv=None):
+    # Set up logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+
     cmd_args = parse_args(argv)
 
     # https://github.com/astronomy-commons/hats-import/issues/624
     cmd_args.tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    transformer_klass = get_transformer(cmd_args.transformer)
 
     input_files = input_file_list(cmd_args.input)
     if cmd_args.first_n is not None:
@@ -143,7 +176,7 @@ def main(argv=None):
         )
         .catalog(
             input_file_list=input_files,
-            file_reader=MMUReader(chunk_mb=128, transform_klass=SDSSTransformer),
+            file_reader=MMUReader(chunk_mb=128, transform_klass=transformer_klass),
             ra_column=cmd_args.ra,
             dec_column=cmd_args.dec,
             pixel_threshold=cmd_args.max_rows,
@@ -156,14 +189,14 @@ def main(argv=None):
     if cmd_args.debug:
         # Debug mode: use 1 worker and 1 thread for easier debugging with breakpoints
         client_kwargs = {"n_workers": 1, "threads_per_worker": 1, "processes": False}
-        logger.info("Running in DEBUG mode (single worker, single thread, no separate processes)")
+        LOGGER.info("Running in DEBUG mode (single worker, single thread, no separate processes)")
     else:
         # Production mode: use multiple workers
         client_kwargs = {"n_workers": min(8, cpu_count()), "threads_per_worker": 1}
-        logger.info(f"Running in PRODUCTION mode ({client_kwargs['n_workers']} workers)")
+        LOGGER.info(f"Running in PRODUCTION mode ({client_kwargs['n_workers']} workers)")
 
     with Client(**client_kwargs) as client:
-        logger.info(f"Dask dashboard: {client.dashboard_link}")
+        LOGGER.info(f"Dask dashboard: {client.dashboard_link}")
         pipeline_with_client(import_args, client)
 
 

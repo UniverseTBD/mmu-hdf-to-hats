@@ -1,12 +1,12 @@
 """
-SwiftSNEIaTransformer: Clean class-based transformation from HDF5 to PyArrow tables.
+SwiftSNeIaTransformer: Clean class-based transformation from HDF5 to PyArrow tables.
 """
 import pyarrow as pa
 import numpy as np
-from catalog_functions.base_transformer import BaseTransformer
+from catalog_functions.utils import BaseTransformer
 
 
-class SwiftSNEIaTransformer(BaseTransformer):
+class SwiftSNeIaTransformer(BaseTransformer):
     """Transforms Swift SNE Ia HDF5 files to PyArrow tables with proper schema."""
 
     # Feature definitions from swift_sne_ia.py
