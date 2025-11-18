@@ -32,6 +32,11 @@ class DESITransformer(BaseTransformer):
         "FIBERTOTFLUX_Z",
     ]
 
+    DOUBLE_FEATURES = [
+        "ra",
+        "dec",
+    ]
+
     def create_schema(self):
         """Create the output PyArrow schema."""
         fields = []
@@ -49,6 +54,10 @@ class DESITransformer(BaseTransformer):
         # Add all float features
         for f in self.FLOAT_FEATURES:
             fields.append(pa.field(f, pa.float32()))
+
+        # Add all double features
+        for f in self.DOUBLE_FEATURES:
+            fields.append(pa.field(f, pa.float64()))
 
         # Add all boolean features
         for f in self.BOOL_FEATURES:
@@ -96,11 +105,15 @@ class DESITransformer(BaseTransformer):
         for f in self.FLOAT_FEATURES:
             columns[f] = pa.array(data[f][:].astype(np.float32))
 
-        # 3. Add boolean features
+        # 3. Add double features
+        for f in self.DOUBLE_FEATURES:
+            columns[f] = pa.array(data[f][:].astype(np.float64))
+
+        # 4. Add boolean features
         for f in self.BOOL_FEATURES:
             columns[f] = pa.array(data[f][:].astype(bool))
 
-        # 4. Add object_id
+        # 5. Add object_id
         columns["object_id"] = pa.array(
             [str(oid) for oid in data["object_id"][:]]
         )
