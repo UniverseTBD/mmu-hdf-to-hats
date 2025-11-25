@@ -128,17 +128,18 @@ class MMUReader(InputReader):
         self.transform = transform_klass()
 
     def _num_chunks(
-        self, file_obj, h5_file: h5py.File, columns: list[str] | None
+        self, upath, h5_file: h5py.File, columns: list[str] | None
     ) -> int:
         if columns is None:
-            size = file_obj.size
+            size = upath.stat().st_size
         else:
             size = sum(h5_file[col].nbytes for col in columns)
         return max(1, int(math.ceil(size / self.chunk_bytes)))
 
     def read(self, input_file: str, read_columns: list[str] | None = None):
-        with UPath(input_file).open("rb") as fh, h5py.File(fh) as h5_file:
-            num_chunks = self._num_chunks(fh, h5_file, read_columns)
+        upath = UPath(input_file)
+        with upath.open("rb") as fh, h5py.File(fh) as h5_file:
+            num_chunks = self._num_chunks(upath, h5_file, read_columns)
             if read_columns is None:
                 read_columns = list(h5_file)
             n_rows = h5_file[read_columns[0]].shape[0]
