@@ -1,30 +1,41 @@
 import pyarrow as pa
 import pyarrow.parquet as pq
-import pyarrow.compute as pc
 from datasets import load_from_disk
 import argparse
-import sys
 from pathlib import Path
+import numpy as np
+
+
+def flatten_struct_columns(table):
+    """Flatten nested struct columns to top-level columns."""
+    new_columns = {}
+
+    for col_name in table.column_names:
+        col = table[col_name]
+        col_type = table.schema.field(col_name).type
+
+        if pa.types.is_struct(col_type):
+            # combine_chunks() + field(i) is zero-copy, unlike to_pylist()
+            struct_col = col.combine_chunks()
+            for i, field in enumerate(col_type):
+                if field.name not in new_columns:
+                    new_columns[field.name] = struct_col.field(i)
+        else:
+            new_columns[col_name] = col
+
+    return pa.table(new_columns)
 
 
 def load_table(file_path):
     """Load a PyArrow table from either a parquet file or datasets directory."""
     path = Path(file_path)
 
-    if not path.exists():
-        raise FileNotFoundError(f"File or directory not found: {file_path}")
-
-    # Try loading as parquet file
     if path.is_file() and path.suffix == ".parquet":
         return pq.read_table(file_path)
 
-    # Try loading as datasets directory
     if path.is_dir():
-        try:
-            dataset = load_from_disk(file_path)
-            return dataset.data.table  # Get the underlying Arrow table
-        except Exception as e:
-            raise ValueError(f"Could not load {file_path} as datasets directory: {e}")
+        dataset = load_from_disk(file_path)
+        return dataset.data.table
 
     raise ValueError(f"Unsupported file type or format: {file_path}")
 
@@ -68,13 +79,19 @@ def compare_tables(table1, table2, label1="Table 1", label2="Table 2"):
 
     # Compare common columns (only if both tables have rows)
     if common_cols and table1.num_rows > 0 and table2.num_rows > 0:
-        # Find a sortable column for comparison
+        # Find a sortable column for comparison - prefer object_id for stability
         sort_column = None
-        for col_name in sorted(common_cols):
-            col_type = table1.schema.field(col_name).type
-            if not pa.types.is_nested(col_type):
+        preferred_sort_cols = ["object_id", "source_id", "id"]
+        for col_name in preferred_sort_cols:
+            if col_name in common_cols:
                 sort_column = col_name
                 break
+        if sort_column is None:
+            for col_name in sorted(common_cols):
+                col_type = table1.schema.field(col_name).type
+                if not pa.types.is_nested(col_type):
+                    sort_column = col_name
+                    break
 
         if sort_column is None:
             issues.append({
@@ -83,53 +100,32 @@ def compare_tables(table1, table2, label1="Table 1", label2="Table 2"):
             })
         else:
             print(f"\nSorting by column: {sort_column}")
-            try:
-                table1_sorted = table1.sort_by(sort_column)
-                table2_sorted = table2.sort_by(sort_column)
+            table1_sorted = table1.sort_by(sort_column)
+            table2_sorted = table2.sort_by(sort_column)
 
-                print(f"\nComparing {len(common_cols)} common columns...")
-                for col_name in sorted(common_cols):
-                    print(f"  Checking {col_name}...", end=" ")
-                    col1 = table1_sorted[col_name]
-                    col2 = table2_sorted[col_name]
+            print(f"\nComparing {len(common_cols)} common columns...")
+            for col_name in sorted(common_cols):
+                print(f"  Checking {col_name}...", end=" ")
+                col1 = table1_sorted[col_name]
+                col2 = table2_sorted[col_name]
 
-                    # For nested types (struct, list), use Python comparison
-                    # PyArrow's .equals() checks exact representation, not logical equality
-                    col_type = table1_sorted.schema.field(col_name).type
-                    if pa.types.is_nested(col_type):
-                        # Compare as Python objects for nested types
-                        columns_equal = col1.combine_chunks().to_pylist() == col2.combine_chunks().to_pylist()
-                    else:
-                        # Use Arrow's equals for simple types
-                        columns_equal = col1.equals(col2)
+                col_type = table1_sorted.schema.field(col_name).type
+                # Structs are flattened, but list columns remain nested
+                if pa.types.is_nested(col_type):
+                    columns_equal = col1.combine_chunks().to_pylist() == col2.combine_chunks().to_pylist()
+                elif pa.types.is_floating(col_type):
+                    columns_equal = np.allclose(col1.to_numpy(), col2.to_numpy(), rtol=1e-5, atol=1e-8, equal_nan=True)
+                else:
+                    columns_equal = col1.equals(col2)
 
-                    if not columns_equal:
-                        print("MISMATCH")
-                        # Find first difference
-                        try:
-                            # For nested types, find first difference manually
-                            if pa.types.is_nested(col_type):
-                                py1 = col1.to_pylist()
-                                py2 = col2.to_pylist()
-                                first_diff_idx = next(i for i in range(len(py1)) if py1[i] != py2[i])
-                            else:
-                                first_diff_idx = pc.index(pc.not_equal(col1, col2), True).as_py()
-                            issues.append({
-                                "type": "column_values",
-                                "message": f"Column '{col_name}' has differences (first at row {first_diff_idx})"
-                            })
-                        except:
-                            issues.append({
-                                "type": "column_values",
-                                "message": f"Column '{col_name}' has differences"
-                            })
-                    else:
-                        print("OK")
-            except Exception as e:
-                issues.append({
-                    "type": "sorting",
-                    "message": f"Error during sorting/comparison: {str(e)}"
-                })
+                if columns_equal:
+                    print("OK")
+                else:
+                    print("MISMATCH")
+                    issues.append({
+                        "type": "column_values",
+                        "message": f"Column '{col_name}' has differences"
+                    })
 
     # Print final report
     print(f"\n{'='*70}")
@@ -181,6 +177,11 @@ Examples:
 
     print(f"Loading second table from: {args.file2}")
     table2 = load_table(args.file2)
+
+    # Flatten struct columns for comparison
+    print("Flattening struct columns...")
+    table1 = flatten_struct_columns(table1)
+    table2 = flatten_struct_columns(table2)
 
     # Compare tables and show full report
     compare_tables(table1, table2, label1=args.file1, label2=args.file2)

@@ -95,7 +95,7 @@ class GaiaTransformer(BaseTransformer):
         "nu_eff_used_in_astrometry",
         "pseudocolour",
         "astrometric_params_solved",
-        "rv_template_teff",
+        # Note: rv_template_teff is already in RV_FEATURES, not duplicated here
         "grvs_mag",
     ]
 

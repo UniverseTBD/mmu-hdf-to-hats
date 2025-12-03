@@ -15,10 +15,11 @@ https://users.flatironinstitute.org/~polymathic/data/MultimodalUniverse/v1/
 - Size: ~23 MB
 - Status: ✓ Confirmed by user
 
-**GAIA**
-- healpix=0
-- URL: https://users.flatironinstitute.org/~polymathic/data/MultimodalUniverse/v1/gaia/gaia/healpix=0/
-- Status: ✓ Verified accessible
+**GAIA** (CONFIRMED - 16MB)
+- healpix=1631
+- URL: https://users.flatironinstitute.org/~polymathic/data/MultimodalUniverse/v1/gaia/gaia/healpix=1631/
+- Size: ~16 MB
+- Status: ✓ Verified transformer matches datasets output
 
 **DESI**
 - healpix=626
