@@ -154,8 +154,7 @@ class BTSbotTransformer(BaseTransformer):
         scale_arrays = []
 
         for i in range(n_objects):
-            # str() matches datasets library behavior (produces "b'r'" not "r")
-            band = str(band_data[i])
+            band = band_data[i].decode("utf-8") if isinstance(band_data[i], bytes) else band_data[i]
             scale = float(scale_data[i])
 
             band_arrays.append([band] * len(self.VIEWS))
