@@ -161,7 +161,7 @@ class MMUReader(InputReader):
 
 
 def input_file_list(path: UPath) -> list[str]:
-    path_list = sorted(path.rglob("*.hdf5"))
+    path_list = sorted(list(path.rglob("*.hdf5")) + list(path.rglob("*.h5")))
     return [upath.path for upath in path_list]
 
 

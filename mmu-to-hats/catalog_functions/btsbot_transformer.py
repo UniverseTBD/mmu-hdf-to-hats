@@ -144,10 +144,12 @@ class BTSbotTransformer(BaseTransformer):
         band_data = np.char.decode(data["band"][:], encoding="utf-8") if isinstance(data["band"][0], bytes) else data["band"][:]
         scale_data = data["image_scale"][:]
 
-        band_arrays = [[band_data[i] for i in range(len(self.VIEWS))] for _ in range(n_objects)]
+        # Each observation has ONE band (g or r) but THREE views (science, ref, diff)
+        # The 3 views are already encoded in the last dimension of image_triplet
+        band_arrays = [[band_data[i]] for i in range(n_objects)]
         view_arrays = [self.VIEWS for _ in range(n_objects)]
         array_arrays = [[[row.tolist() for row in image_triplet[i, :, :, j]] for j in range(3)] for i in range(n_objects)]
-        scale_arrays = [[float(scale_data[i]) for _j in range(3)] for i in range(n_objects) ]
+        scale_arrays = [[float(scale_data[i])] for i in range(n_objects)]
 
         columns["band"] = pa.array(band_arrays, type=pa.list_(pa.string()))
         columns["view"] = pa.array(view_arrays, type=pa.list_(pa.string()))
