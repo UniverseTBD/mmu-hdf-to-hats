@@ -1,0 +1,69 @@
+name: tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    # Only run on relevant paths-filers
+    paths:
+      - "mmu-to-hats/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "mmu-to-hats/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Cancel only PR intermediate builds
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Cache virtual environment
+        id: cache-venv
+        uses: actions/cache@v4
+        with:
+          path: mmu-to-hats/.venv
+          key: ${{ runner.os }}-venv-${{ hashFiles('mmu-to-hats/pyproject.toml', 'mmu-to-hats/uv.lock') }}
+      - name: Install uv and create venv
+        if: steps.cache-venv.outputs.cache-hit != 'true'
+        run: |
+          python -m pip install --upgrade uv
+          cd mmu-to-hats && uv venv .venv && uv pip install '.'
+
+  check_transformations:
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        catalog:
+          - btsbot
+          # todo: add more catalogs here once they're ready
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Restore virtual environment
+        uses: actions/cache@v4
+        with:
+          path: mmu-to-hats/.venv
+          key: ${{ runner.os }}-venv-${{ hashFiles('mmu-to-hats/pyproject.toml', 'mmu-to-hats/uv.lock') }}
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+      - name: Run transformation test for ${{ matrix.catalog }}
+        run: |
+          cd mmu-to-hats && source .venv/bin/activate && python verify.py ${{ matrix.catalog }}
