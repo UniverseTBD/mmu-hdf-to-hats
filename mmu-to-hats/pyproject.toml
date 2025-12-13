@@ -12,6 +12,7 @@ dependencies = [
     "numpy",
     "pyarrow",
     "universal_pathlib",
+    "click",
 ]
 
 [tool.setuptools.packages.find]

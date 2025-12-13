@@ -773,6 +773,7 @@ name = "mmu-to-hats"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "click" },
     { name = "dask", extra = ["diagnostics", "distributed"] },
     { name = "h5py" },
     { name = "hats-import" },
@@ -784,6 +785,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "click" },
     { name = "dask", extras = ["distributed", "diagnostics"] },
     { name = "h5py" },
     { name = "hats-import" },
