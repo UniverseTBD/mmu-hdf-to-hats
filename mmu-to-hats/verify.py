@@ -51,7 +51,7 @@ def run_single_catalog(catalog_name: str):
         text=True,
     )
     if result.returncode != 0:
-        click.echo(f"Error in loading step:", err=True)
+        click.echo("Error in loading step:", err=True)
         click.echo(result.stderr, err=True)
         return result.returncode
     click.echo(result.stdout)
@@ -68,7 +68,7 @@ def run_single_catalog(catalog_name: str):
         text=True,
     )
     if result.returncode != 0:
-        click.echo(f"Error in transform step:", err=True)
+        click.echo("Error in transform step:", err=True)
         click.echo(result.stderr, err=True)
         return result.returncode
     click.echo(result.stdout)
@@ -83,13 +83,13 @@ def run_single_catalog(catalog_name: str):
         text=True,
     )
     if result.returncode != 0:
-        click.echo(f"Error in comparison step:", err=True)
+        click.echo("Error in comparison step:", err=True)
         click.echo(result.stderr, err=True)
         return result.returncode
     click.echo(result.stdout)
 
     click.echo(f"\n✓ Verification complete for {catalog_name}")
-    return 0
+    return
 
 
 if __name__ == "__main__":

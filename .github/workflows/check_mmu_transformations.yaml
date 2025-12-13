@@ -61,6 +61,8 @@ jobs:
         with:
           path: mmu-to-hats/.venv
           key: ${{ runner.os }}-venv-${{ hashFiles('mmu-to-hats/pyproject.toml', 'mmu-to-hats/uv.lock') }}
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
       - name: Run transformation test for ${{ matrix.catalog }}
         run: |
           cd mmu-to-hats && source .venv/bin/activate && python verify.py ${{ matrix.catalog }}
