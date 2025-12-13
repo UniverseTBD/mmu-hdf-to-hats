@@ -41,6 +41,20 @@ catalog_data = {
 @click.argument("catalog_name", type=click.Choice(catalogs))
 def run_single_catalog(catalog_name: str):
     """Run verification pipeline for a catalog."""
+    # Step 0: Download data + script file
+    click.echo(f"Step 0: Downloading data and script for {catalog_name}...")
+    download_command = f"./verification/download_{catalog_name}.sh"
+    result = subprocess.run(
+        download_command,
+        shell=True,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        click.echo("Error in download step:", err=True)
+        click.echo(result.stderr, err=True)
+        return result.returncode
+    click.echo(result.stdout)
     # Step 1: Load via external script
     click.echo(f"Step 1: Loading {catalog_name} via datasets...")
     load_via_extern_script_command = f"uv run --with-requirements=verification/requirements.in python verification/process_{catalog_name}_using_datasets.py"
