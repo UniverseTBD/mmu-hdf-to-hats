@@ -47,12 +47,15 @@ class BaseTransformer(ABC):
         return p.is_dir()
 
     def transform_from_hdf5(
-        self, hdf5_file_path: List[Union[str, Path, "UPath"]] | Union[str, Path, "UPath"]
+        self,
+        hdf5_file_path: List[Union[str, Path, "UPath"]] | Union[str, Path, "UPath"],
     ) -> pa.Table:
         """Transform HDF5 file to PyArrow table."""
         if self._check_if_directory(hdf5_file_path):
             # list all files in the dir
-            hdf5_file_path = list(UPath(hdf5_file_path).glob("*.hdf5"))
+            hdf5_file_path = list(UPath(hdf5_file_path).glob("*.hdf5")) + list(
+                UPath(hdf5_file_path).glob("*.h5")
+            )
         if isinstance(hdf5_file_path, (str, Path, UPath)):
             return self.transform_from_hdf5_file(hdf5_file_path)
         elif isinstance(hdf5_file_path, list):
