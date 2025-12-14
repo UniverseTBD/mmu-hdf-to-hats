@@ -50,6 +50,8 @@ jobs:
       matrix:
         catalog:
           - btsbot
+          - desi
+          - gaia
           # todo: add more catalogs here once they're ready
     steps:
       - uses: actions/checkout@v4
