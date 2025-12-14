@@ -52,6 +52,7 @@ jobs:
           - btsbot
           - desi
           - gaia
+          - sdss
           # todo: add more catalogs here once they're ready
     steps:
       - uses: actions/checkout@v4
