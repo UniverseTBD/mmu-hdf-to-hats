@@ -204,9 +204,6 @@ def main(file1, file2):
       python compare.py data/dataset1 data/dataset2
     """
     # Load both tables
-    import ipdb
-
-    ipdb.set_trace(context=20)
     click.echo(f"Loading first table from: {file1}")
     table1 = load_table(file1)
 
