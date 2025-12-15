@@ -66,11 +66,11 @@ def run_single_catalog(catalog_name: str):
         capture_output=True,
         text=True,
     )
+    click.echo(result.stdout)
     if result.returncode != 0:
         click.echo("Error in download step:", err=True)
         click.echo(result.stderr, err=True)
-        raise Exception("Download failed")
-    click.echo(result.stdout)
+        exit(1)
     # Step 1: Load via external script
     click.echo(f"Step 1: Loading {catalog_name} via datasets...")
     load_via_extern_script_command = f"uv run --with-requirements=verification/requirements.in python verification/process_{catalog_name}_using_datasets.py"
@@ -80,11 +80,11 @@ def run_single_catalog(catalog_name: str):
         capture_output=True,
         text=True,
     )
+    click.echo(result.stdout)
     if result.returncode != 0:
         click.echo("Error in loading step:", err=True)
         click.echo(result.stderr, err=True)
-        raise Exception("Transform via datasets failed")
-    click.echo(result.stdout)
+        exit(1)
 
     # Step 2: Transform to parquet
     click.echo(f"\nStep 2: Transforming {catalog_name} to parquet...")
@@ -97,11 +97,11 @@ def run_single_catalog(catalog_name: str):
         capture_output=True,
         text=True,
     )
+    click.echo(result.stdout)
     if result.returncode != 0:
         click.echo("Error in transform step:", err=True)
         click.echo(result.stderr, err=True)
-        raise Exception("Transform via custom transformer class failed")
-    click.echo(result.stdout)
+        exit(1)
 
     # Step 3: Compare files
     click.echo(f"\nStep 3: Comparing {catalog_name} files...")
@@ -112,11 +112,11 @@ def run_single_catalog(catalog_name: str):
         capture_output=True,
         text=True,
     )
+    click.echo(result.stdout)
     if result.returncode != 0:
         click.echo("Error in comparison step:", err=True)
         click.echo(result.stderr, err=True)
-        raise Exception("Comparison failed")
-    click.echo(result.stdout)
+        exit(1)
 
     click.echo(f"\n✓ Verification complete for {catalog_name}")
     return
