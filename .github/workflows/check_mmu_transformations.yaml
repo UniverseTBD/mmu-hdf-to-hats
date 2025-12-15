@@ -39,7 +39,10 @@ jobs:
         if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
           python -m pip install --upgrade uv
-          cd mmu-to-hats && uv venv .venv && uv pip install '.'
+          cd mmu-to-hats && uv venv .venv && uv pip install '.[dev]'
+      - name: run pytest
+        run: |
+          cd mmu-to-hats && source .venv/bin/activate && pytest tests/
 
   check_transformations:
     needs: setup
@@ -54,6 +57,7 @@ jobs:
           - gaia
           - sdss
           - tess
+          - vipers
           # todo: add more catalogs here once they're ready
     steps:
       - uses: actions/checkout@v4
