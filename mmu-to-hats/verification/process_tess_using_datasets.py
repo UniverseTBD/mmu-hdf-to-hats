@@ -27,4 +27,5 @@ tess_train = tess.as_dataset(split="train")
 tess_mapped = tess_train.map(
     lambda example: match_tess_catalog_object_ids(example, tess_catalog)
 )
+tess_mapped = tess_mapped.remove_columns(["RA", "DEC"])
 tess_mapped.save_to_disk("data/MultimodalUniverse/v1/tess_with_coordinates")
