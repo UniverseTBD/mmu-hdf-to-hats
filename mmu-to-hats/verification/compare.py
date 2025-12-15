@@ -40,12 +40,10 @@ def load_table(file_path):
     raise ValueError(f"Unsupported file type or format: {file_path}")
 
 
-def compare_tables(table1, table2, label1="Table 1", label2="Table 2"):
+def compare_tables(table1, table2, label1="Table 1", label2="Table 2", mismatch_number=3):
     """Compare two PyArrow tables and report all differences."""
     # general comparison report
     issues = []
-    # mismatched columns
-    mismatches = []
 
     print(f"\n{'=' * 70}")
     print(f"COMPARISON SUMMARY")
@@ -89,6 +87,7 @@ def compare_tables(table1, table2, label1="Table 1", label2="Table 2"):
     # Compare common columns (only if both tables have rows)
     if common_cols and table1.num_rows > 0 and table2.num_rows > 0:
         # Find a sortable column for comparison - prefer object_id for stability
+        import ipdb; ipdb.set_trace(context=20)
         sort_column = None
         preferred_sort_cols = ["object_id", "source_id", "id"]
         for col_name in preferred_sort_cols:
@@ -133,7 +132,7 @@ def compare_tables(table1, table2, label1="Table 1", label2="Table 2"):
                             if list1[i] != list2[i]
                         ]
                         sample_data = [
-                            (i, list1[i], list2[i]) for i in mismatch_indices[:3]
+                            {"index": i, "left": list1[i], "right": list2[i]} for i in mismatch_indices[:mismatch_number]
                         ]
                 elif pa.types.is_floating(col_type):
                     arr1 = col1.to_numpy()
@@ -150,25 +149,26 @@ def compare_tables(table1, table2, label1="Table 1", label2="Table 2"):
                         mask = ~np.isclose(
                             arr1, arr2, rtol=1e-5, atol=1e-8, equal_nan=True
                         )
+                        import ipdb; ipdb.set_trace(context=20)
                         mismatch_indices = np.where(mask)[0][:3]
-                        sample_data = [(i, arr1[i], arr2[i]) for i in mismatch_indices]
+                        sample_data = [{"index": i, "left": arr1[i], "right": arr2[i]} for i in mismatch_indices[:mismatch_number]]
                 else:
                     columns_equal = col1.equals(col2)
                     if not columns_equal:
                         # Find mismatched indices
                         arr1 = col1.to_pylist()
                         arr2 = col2.to_pylist()
+                        import ipdb; ipdb.set_trace(context=20)
                         mismatch_indices = [
                             i
                             for i in range(min(len(arr1), len(arr2)))
                             if arr1[i] != arr2[i]
                         ]
                         sample_data = [
-                            (i, arr1[i], arr2[i]) for i in mismatch_indices[:3]
+                            {"index": i, "left": arr1[i], "right": arr2[i]} for i in mismatch_indices[:mismatch_number]
                         ]
 
                 if not columns_equal:
-                    mismatches.append((col_name, sample_data))
                     issues.append(
                         {
                             "type": "column_values",
@@ -176,7 +176,7 @@ def compare_tables(table1, table2, label1="Table 1", label2="Table 2"):
                             "samples": sample_data,
                         }
                     )
-    return issues, mismatches
+    return issues
 
 
 @click.command()
@@ -209,7 +209,7 @@ def main(file1, file2):
     table2 = flatten_struct_columns(table2)
 
     # Compare tables and show full report
-    issues, mismatches = compare_tables(table1, table2, label1=file1, label2=file2)
+    issues = compare_tables(table1, table2, label1=file1, label2=file2)
 
     # Print final report
     print(f"\n{'=' * 70}")
@@ -221,13 +221,7 @@ def main(file1, file2):
         if "samples" in issue and issue["samples"]:
             msg += f" (showing {len(issue['samples'])} sample(s))"
         print(msg)
-    if mismatches:
-        print(f"\nFound {len(mismatches)} column(s) with mismatches:")
-        for col_name, samples in mismatches:
-            print(f"\n  Column '{col_name}':")
-            for idx, val1, val2 in samples:
-                print(f"    Row {idx}: {label1}={val1} vs {label2}={val2}")
-    if result is False:
+    if len(issues) > 0:
         exit(1)
 
 
