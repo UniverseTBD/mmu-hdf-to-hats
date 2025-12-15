@@ -31,8 +31,20 @@ catalogs = [
 
 catalog_data = {
     "btsbot": {
-        "original-mmu": "data/btsbot_hp0313_transformed.parquet",
-        "rewritten": "data/MultimodalUniverse/v1/btsbot_with_coordinates/",
+        "original-mmu": "data/MultimodalUniverse/v1/btsbot_with_coordinates/",
+        "rewritten": "data/btsbot_hp0313_transformed.parquet",
+    },
+    "desi": {
+        "original-mmu": "data/MultimodalUniverse/v1/desi_with_coordinates/",
+        "rewritten": "data/desi_hp626_transformed.parquet",
+    },
+    "gaia": {
+        "original-mmu": "data/MultimodalUniverse/v1/gaia_with_coordinates/",
+        "rewritten": "data/gaia_hp1631_transformed.parquet",
+    },
+    "sdss": {
+        "original-mmu": "data/MultimodalUniverse/v1/sdss_with_coordinates/",
+        "rewritten": "data/sdss_hp583_transformed.parquet",
     },
 }
 
