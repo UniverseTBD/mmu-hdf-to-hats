@@ -18,8 +18,8 @@ def match_tess_catalog_object_ids(example, catalog):
     assert len(catalog_entry) == 1
     return {
         **example,
-        "ra": catalog_entry["RA"][0],
-        "dec": catalog_entry["DEC"][0],
+        "RA": catalog_entry["RA"][0],
+        "DEC": catalog_entry["DEC"][0],
     }
 
 
@@ -27,5 +27,4 @@ tess_train = tess.as_dataset(split="train")
 tess_mapped = tess_train.map(
     lambda example: match_tess_catalog_object_ids(example, tess_catalog)
 )
-tess_mapped = tess_mapped.remove_columns(["RA", "DEC"])
 tess_mapped.save_to_disk("data/MultimodalUniverse/v1/tess_with_coordinates")

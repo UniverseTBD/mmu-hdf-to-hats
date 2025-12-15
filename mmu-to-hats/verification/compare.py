@@ -146,7 +146,6 @@ def compare_tables(
                     list2 = col2.combine_chunks().to_pylist()
                     columns_equal = list1 == list2
                     if not columns_equal:
-<<<<<<< HEAD
                         if isinstance(list1[0], list) and isinstance(list2[0], list) or isinstance(list1[0], list) and isinstance(list1[0][0], float) and isinstance(list2[0], list) and isinstance(list2[0][0], float):
                             arr1 = np.array(list1)
                             arr2 = np.array(list2)
@@ -159,38 +158,6 @@ def compare_tables(
                     arr1 = col1.to_numpy()
                     arr2 = col2.to_numpy()
                     columns_equal, sample_data = columns_equal_or_samples(arr1, arr2)
-=======
-                        # Find mismatched indices
-                        mismatch_indices = [
-                            i
-                            for i in range(min(len(list1), len(list2)))
-                            if list1[i] != list2[i]
-                        ]
-                        sample_data = [
-                            {"index": i, "left": list1[i], "right": list2[i]}
-                            for i in mismatch_indices[:mismatch_number]
-                        ]
-                elif pa.types.is_floating(col_type):
-                    arr1 = col1.to_numpy()
-                    arr2 = col2.to_numpy()
-                    columns_equal = np.allclose(
-                        arr1,
-                        arr2,
-                        rtol=1e-5,
-                        atol=1e-8,
-                        equal_nan=True,
-                    )
-                    if not columns_equal:
-                        # Find mismatched indices
-                        mask = ~np.isclose(
-                            arr1, arr2, rtol=1e-5, atol=1e-8, equal_nan=True
-                        )
-                        mismatch_indices = np.where(mask)[0][:3]
-                        sample_data = [
-                            {"index": i, "left": arr1[i], "right": arr2[i]}
-                            for i in mismatch_indices[:mismatch_number]
-                        ]
->>>>>>> main
                 else:
                     columns_equal = col1.equals(col2)
                     if not columns_equal:

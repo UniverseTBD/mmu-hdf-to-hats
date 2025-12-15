@@ -29,7 +29,7 @@ class TESSTransformer(BaseTransformer):
 
         # Add all float features
         for f in self.FLOAT_FEATURES:
-            fields.append(pa.field(f.lower(), pa.float32()))
+            fields.append(pa.field(f, pa.float32()))
 
         # Object ID
         fields.append(pa.field("object_id", pa.string()))
@@ -71,7 +71,7 @@ class TESSTransformer(BaseTransformer):
 
         # 2. Add float features
         for f in self.FLOAT_FEATURES:
-            columns[f.lower()] = pa.array(data[f][:].astype(np.float32))
+            columns[f] = pa.array(data[f][:].astype(np.float32))
 
         # 3. Add object_id
         columns["object_id"] = pa.array([str(oid) for oid in data["object_id"][:]])
