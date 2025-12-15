@@ -69,7 +69,7 @@ def run_single_catalog(catalog_name: str):
     if result.returncode != 0:
         click.echo("Error in download step:", err=True)
         click.echo(result.stderr, err=True)
-        return result.returncode
+        raise Exception("Download failed")
     click.echo(result.stdout)
     # Step 1: Load via external script
     click.echo(f"Step 1: Loading {catalog_name} via datasets...")
@@ -83,7 +83,7 @@ def run_single_catalog(catalog_name: str):
     if result.returncode != 0:
         click.echo("Error in loading step:", err=True)
         click.echo(result.stderr, err=True)
-        return result.returncode
+        raise Exception("Transform via datasets failed")
     click.echo(result.stdout)
 
     # Step 2: Transform to parquet
@@ -100,7 +100,7 @@ def run_single_catalog(catalog_name: str):
     if result.returncode != 0:
         click.echo("Error in transform step:", err=True)
         click.echo(result.stderr, err=True)
-        return result.returncode
+        raise Exception("Transform via custom transformer class failed")
     click.echo(result.stdout)
 
     # Step 3: Compare files
@@ -115,7 +115,7 @@ def run_single_catalog(catalog_name: str):
     if result.returncode != 0:
         click.echo("Error in comparison step:", err=True)
         click.echo(result.stderr, err=True)
-        return result.returncode
+        raise Exception("Comparison failed")
     click.echo(result.stdout)
 
     click.echo(f"\n✓ Verification complete for {catalog_name}")

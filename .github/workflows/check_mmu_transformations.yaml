@@ -40,6 +40,9 @@ jobs:
         run: |
           python -m pip install --upgrade uv
           cd mmu-to-hats && uv venv .venv && uv pip install '.'
+      - name: run pytest
+        run: |
+          cd mmu-to-hats && source .venv/bin/activate && uv pytest tests/
 
   check_transformations:
     needs: setup
