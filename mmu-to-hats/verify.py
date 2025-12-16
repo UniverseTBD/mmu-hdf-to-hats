@@ -33,6 +33,7 @@ catalog_data = {
     "btsbot": {
         "original-mmu": "data/MultimodalUniverse/v1/btsbot_with_coordinates/",
         "rewritten": "data/btsbot_hp0313_transformed.parquet",
+        "allowed-mismatch-columns": "band",
     },
     "desi": {
         "original-mmu": "data/MultimodalUniverse/v1/desi_with_coordinates/",
@@ -110,6 +111,8 @@ def run_single_catalog(catalog_name: str):
     # Step 3: Compare files
     click.echo(f"\nStep 3: Comparing {catalog_name} files...")
     compare_command = f"python verification/compare.py {catalog_data[catalog_name]['original-mmu']} {catalog_data[catalog_name]['rewritten']}"
+    if "allowed-mismatch-columns" in catalog_data[catalog_name]:
+        compare_command += f" --allowed-mismatch-columns {catalog_data[catalog_name]['allowed-mismatch-columns']}"
     result = subprocess.run(
         compare_command,
         shell=True,

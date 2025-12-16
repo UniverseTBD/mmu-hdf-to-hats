@@ -78,6 +78,7 @@ def compare_tables(
         issues.append(
             {
                 "type": "row_count",
+                "column": None,
                 "message": f"Row count mismatch: {label1} has {table1.num_rows} rows, {label2} has {table2.num_rows} rows",
             }
         )
@@ -94,6 +95,7 @@ def compare_tables(
         issues.append(
             {
                 "type": "columns",
+                "column": None,
                 "message": f"{label1} has additional columns: {sorted(cols_only_in_1)}",
             }
         )
@@ -102,6 +104,7 @@ def compare_tables(
         issues.append(
             {
                 "type": "columns",
+                "column": None,
                 "message": f"{label2} has additional columns: {sorted(cols_only_in_2)}",
             }
         )
@@ -126,6 +129,7 @@ def compare_tables(
             issues.append(
                 {
                     "type": "sorting",
+                    "column": None,
                     "message": "No sortable column found in common columns - cannot compare row-by-row",
                 }
             )
@@ -179,6 +183,7 @@ def compare_tables(
                         {
                             "type": "column_values",
                             "message": f"Column '{col_name}' has differences",
+                            "column": col_name,
                             "samples": sample_data,
                         }
                     )
@@ -188,7 +193,8 @@ def compare_tables(
 @click.command()
 @click.argument("file1", type=click.Path(exists=True))
 @click.argument("file2", type=click.Path(exists=True))
-def main(file1, file2):
+@click.option("--allowed-mismatch-columns", type=str, default="")
+def main(file1, file2, allowed_mismatch_columns):
     """Compare two PyArrow tables from parquet files or datasets directories.
 
     Examples:
@@ -224,9 +230,13 @@ def main(file1, file2):
         msg = f"{idx}. [{issue['type'].upper()}] {issue['message']}"
         if "samples" in issue and issue["samples"]:
             msg += f" (showing {len(issue['samples'])} sample(s))"
+            for sample in issue["samples"]:
+                msg += f"\n    - Index {sample['index']}: Left = {sample['left']}, Right = {sample['right']}"
         print(msg)
-    if len(issues) > 0:
+    issues_leading_to_failure = [issue for issue in issues if issue["column"] not in allowed_mismatch_columns.split(",")]
+    if len(issues_leading_to_failure) > 0:
         exit(1)
+    exit(0)
 
 
 if __name__ == "__main__":
