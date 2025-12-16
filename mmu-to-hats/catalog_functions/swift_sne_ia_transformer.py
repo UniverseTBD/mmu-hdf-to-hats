@@ -54,67 +54,69 @@ class SwiftSNeIaTransformer(BaseTransformer):
             pa.Table: Transformed Arrow table
         """
         # Dictionary to hold all columns
-        import ipdb
-
-        ipdb.set_trace(context=20)
         columns = {}
 
-        # 1. Create lightcurve struct column
-        # Lightcurve data: band, time, flux, flux_err
-        lightcurve_data = data["lightcurve"][:]  # Shape varies by implementation
-        n_objects = len(data["object_id"][:])
+        # 1. Extract scalar values
+        object_id = data["object_id"][()]
+        if isinstance(object_id, bytes):
+            object_id = object_id.decode('utf-8')
 
-        band_lists = []
-        time_lists = []
-        flux_lists = []
-        flux_err_lists = []
+        obj_type = data["obj_type"][()]
+        if isinstance(obj_type, bytes):
+            obj_type = obj_type.decode('utf-8')
 
-        for i in range(n_objects):
-            lc = lightcurve_data[i]
-            bands = [
-                b.decode("utf-8") if isinstance(b, bytes) else str(b)
-                for b in lc["band"]
-            ]
-            times = lc["time"].astype(np.float32).tolist()
-            fluxes = lc["flux"].astype(np.float32).tolist()
-            flux_errs = lc["flux_err"].astype(np.float32).tolist()
+        # 2. Parse bands (comma-separated string like 'B,N,U,V,W,X')
+        bands_str = data["bands"][()]
+        if isinstance(bands_str, bytes):
+            bands_str = bands_str.decode('utf-8')
+        band_names = bands_str.split(',')
 
-            band_lists.append(bands)
-            time_lists.append(times)
-            flux_lists.append(fluxes)
-            flux_err_lists.append(flux_errs)
+        # 3. Get lightcurve arrays (shape: n_bands × n_timepoints)
+        time_arr = data["time"][:].astype(np.float32)  # Shape: (6, 29)
+        flux_arr = data["flux"][:].astype(np.float32)
+        flux_err_arr = data["flux_err"][:].astype(np.float32)
 
+        # 4. Flatten lightcurve data: filter out invalid points (marked with -99 or 0)
+        band_list = []
+        time_list = []
+        flux_list = []
+        flux_err_list = []
+
+        for band_idx, band_name in enumerate(band_names):
+            times = time_arr[band_idx]
+            fluxes = flux_arr[band_idx]
+            flux_errs = flux_err_arr[band_idx]
+
+            # Filter out invalid points (time=-99 or flux=0)
+            valid_mask = (times > 0) & (fluxes != 0)
+
+            for t, f, fe in zip(times[valid_mask], fluxes[valid_mask], flux_errs[valid_mask]):
+                band_list.append(band_name)
+                time_list.append(float(t))
+                flux_list.append(float(f))
+                flux_err_list.append(float(fe))
+
+        # 5. Create lightcurve struct column
         lightcurve_arrays = [
-            pa.array(band_lists, type=pa.list_(pa.string())),
-            pa.array(time_lists, type=pa.list_(pa.float32())),
-            pa.array(flux_lists, type=pa.list_(pa.float32())),
-            pa.array(flux_err_lists, type=pa.list_(pa.float32())),
+            pa.array([band_list], type=pa.list_(pa.string())),
+            pa.array([time_list], type=pa.list_(pa.float32())),
+            pa.array([flux_list], type=pa.list_(pa.float32())),
+            pa.array([flux_err_list], type=pa.list_(pa.float32())),
         ]
 
         columns["lightcurve"] = pa.StructArray.from_arrays(
             lightcurve_arrays, names=["band", "time", "flux", "flux_err"]
         )
 
-        # 2. Add float features
+        # 6. Add float features
         for f in self.FLOAT_FEATURES:
-            columns[f] = pa.array(data[f][:].astype(np.float32))
+            columns[f] = pa.array([data[f][()].astype(np.float32)])
 
-        # 3. Add string features
-        for f in self.STR_FEATURES:
-            columns[f] = pa.array(
-                [
-                    str(x.decode("utf-8") if isinstance(x, bytes) else x)
-                    for x in data[f][:]
-                ]
-            )
+        # 7. Add string features
+        columns["obj_type"] = pa.array([obj_type])
 
-        # 4. Add object_id
-        columns["object_id"] = pa.array(
-            [
-                str(oid.decode("utf-8") if isinstance(oid, bytes) else oid)
-                for oid in data["object_id"][:]
-            ]
-        )
+        # 8. Add object_id
+        columns["object_id"] = pa.array([object_id])
 
         # Create table with schema
         schema = self.create_schema()
