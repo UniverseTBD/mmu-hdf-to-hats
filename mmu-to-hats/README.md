@@ -52,6 +52,8 @@ There is an example implemenation for sdss. For data generation do:
  - then run `python transform_scripts/transform_<catalog>_to_parquet.py` (legacy: `python catalog_functions/sdss_transformer.py`). This script needs to be written first but can be copy pasted. Adaptions may be needed to the function in the script, so that the `object_id`s match.
  - both of these jobs will create their own parquet files in the data folder
 - afterwards make sure that the created files match: `python verification/compare.py`
+- add the paths to the files in `verify.py`
+- Once you followed all these steps, you can simply do `python verify.py <catalog_name>`
 
 
 Caveats:
