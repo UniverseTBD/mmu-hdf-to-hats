@@ -51,6 +51,10 @@ catalog_data = {
         "original-mmu": "data/MultimodalUniverse/v1/vipers_with_coordinates/",
         "rewritten": "data/vipers_hp1107_transformed.parquet",
     },
+    "swift_sne_ia": {
+        "original-mmu": "data/MultimodalUniverse/v1/swift_sne_ia_with_coordinates/",
+        "rewritten": "data/swift_sne_ia_hp2158_transformed.parquet",
+    },
 }
 
 

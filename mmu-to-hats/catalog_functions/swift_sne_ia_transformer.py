@@ -54,6 +54,9 @@ class SwiftSNeIaTransformer(BaseTransformer):
             pa.Table: Transformed Arrow table
         """
         # Dictionary to hold all columns
+        import ipdb
+
+        ipdb.set_trace(context=20)
         columns = {}
 
         # 1. Create lightcurve struct column
