@@ -22,10 +22,10 @@ class SwiftSNeIaTransformer(BaseTransformer):
         # Lightcurve struct with nested sequences
         lightcurve_struct = pa.struct(
             [
-                pa.field("band", pa.list_(pa.string())),
-                pa.field("time", pa.list_(pa.float32())),
-                pa.field("flux", pa.list_(pa.float32())),
-                pa.field("flux_err", pa.list_(pa.float32())),
+                pa.field("band", pa.string()),
+                pa.field("time", pa.float32()),
+                pa.field("flux", pa.float32()),
+                pa.field("flux_err", pa.float32()),
             ]
         )
         fields.append(pa.field("lightcurve", lightcurve_struct))
@@ -43,6 +43,35 @@ class SwiftSNeIaTransformer(BaseTransformer):
 
         return pa.schema(fields)
 
+    #                    idxs = np.arange(0, data["flux"].shape[0])
+    #                    band_idxs = idxs.repeat(data["flux"].shape[-1]).reshape(
+    #                        len(data["bands"][()].decode("utf-8").split(",")), -1
+    #                    )
+    #                    bands = data["bands"][()].decode("utf-8").split(",")
+    #                    example = {
+    #                        "lightcurve": {
+    #                            "band": np.asarray(
+    #                                [
+    #                                    bands[band_number]
+    #                                    for band_number in band_idxs.flatten().astype("int32")
+    #                                ]
+    #                            ).astype("str"),
+    #                            "time": np.asarray(data["time"]).flatten().astype("float32"),
+    #                            "flux": np.asarray(data["flux"]).flatten().astype("float32"),
+    #                            "flux_err": np.asarray(data["flux_err"])
+    #                            .flatten()
+    #                            .astype("float32"),
+    #                        }
+    #                    }
+    #
+    #                    # Add remaining features
+    #                    for f in _FLOAT_FEATURES:
+    #                        example[f] = np.asarray(data[f]).astype("float32")
+    #                    for f in _STR_FEATURES:
+    #                        example[f] = data[f][()].decode("utf-8")
+    #
+    #                    yield str(data["object_id"][()]), example
+
     def dataset_to_table(self, data):
         """
         Convert HDF5 dataset to PyArrow table.
@@ -59,67 +88,97 @@ class SwiftSNeIaTransformer(BaseTransformer):
         # 1. Extract scalar values
         object_id = data["object_id"][()]
         if isinstance(object_id, bytes):
-            object_id = object_id.decode('utf-8')
+            object_id = object_id.decode("utf-8")
 
-        obj_type = data["obj_type"][()]
-        if isinstance(obj_type, bytes):
-            obj_type = obj_type.decode('utf-8')
+        columns["object_id"] = pa.array([object_id])
+        idxs = np.arange(0, data["flux"].shape[0])
+        band_idxs = idxs.repeat(data["flux"].shape[-1]).reshape(
+            len(data["bands"][()].decode("utf-8").split(",")), -1
+        )
+        bands = data["bands"][()].decode("utf-8").split(",")
+        # todo: use this for structarray.from_arrays()
+        lightcurve = pa.StructArray.from_arrays(
+            [
+                pa.array(
+                    np.asarray(
+                        [
+                            bands[band_number]
+                            for band_number in band_idxs.flatten().astype("int32")
+                        ]
+                    ).astype("str")
+                ),
+                pa.array(np.asarray(data["time"]).flatten().astype("float32")),
+                pa.array(np.asarray(data["flux"]).flatten().astype("float32")),
+                pa.array(np.asarray(data["flux_err"]).flatten().astype("float32")),
+            ],
+            names=["band", "time", "flux", "flux_err"],
+        )
+        columns["lightcurve"] = lightcurve
+
+        # Add remaining features
+        for f in self.FLOAT_FEATURES:
+            columns[f] = pa.array([data[f][()]])
+        for f in self.STR_FEATURES:
+            columns[f] = pa.array([data[f][()]])
 
         # 2. Parse bands (comma-separated string like 'B,N,U,V,W,X')
         bands_str = data["bands"][()]
         if isinstance(bands_str, bytes):
-            bands_str = bands_str.decode('utf-8')
-        band_names = bands_str.split(',')
+            bands_str = bands_str.decode("utf-8")
+        # band_names = bands_str.split(",")
 
         # 3. Get lightcurve arrays (shape: n_bands × n_timepoints)
-        time_arr = data["time"][:].astype(np.float32)  # Shape: (6, 29)
-        flux_arr = data["flux"][:].astype(np.float32)
-        flux_err_arr = data["flux_err"][:].astype(np.float32)
+        # time_arr = data["time"][:].astype(np.float32)  # Shape: (6, 29)
+        # flux_arr = data["flux"][:].astype(np.float32)
+        # flux_err_arr = data["flux_err"][:].astype(np.float32)
 
         # 4. Flatten lightcurve data: filter out invalid points (marked with -99 or 0)
-        band_list = []
-        time_list = []
-        flux_list = []
-        flux_err_list = []
+        # band_list = []
+        # time_list = []
+        # flux_list = []
+        # flux_err_list = []
 
-        for band_idx, band_name in enumerate(band_names):
-            times = time_arr[band_idx]
-            fluxes = flux_arr[band_idx]
-            flux_errs = flux_err_arr[band_idx]
-
-            # Filter out invalid points (time=-99 or flux=0)
-            valid_mask = (times > 0) & (fluxes != 0)
-
-            for t, f, fe in zip(times[valid_mask], fluxes[valid_mask], flux_errs[valid_mask]):
-                band_list.append(band_name)
-                time_list.append(float(t))
-                flux_list.append(float(f))
-                flux_err_list.append(float(fe))
+        # for band_idx, band_name in enumerate(band_names):
+        #    times = time_arr[band_idx]
+        #    fluxes = flux_arr[band_idx]
+        #    flux_errs = flux_err_arr[band_idx]
+        #
+        #            # Filter out invalid points (time=-99 or flux=0)
+        #            valid_mask = (times > 0) & (fluxes != 0)
+        #
+        #            for t, f, fe in zip(
+        #                times[valid_mask], fluxes[valid_mask], flux_errs[valid_mask]
+        #            ):
+        #                band_list.append(band_name)
+        #                time_list.append(float(t))
+        #                flux_list.append(float(f))
+        #                flux_err_list.append(float(fe))
 
         # 5. Create lightcurve struct column
-        lightcurve_arrays = [
-            pa.array([band_list], type=pa.list_(pa.string())),
-            pa.array([time_list], type=pa.list_(pa.float32())),
-            pa.array([flux_list], type=pa.list_(pa.float32())),
-            pa.array([flux_err_list], type=pa.list_(pa.float32())),
-        ]
+        # lightcurve_arrays = [
+        #     pa.array([band_list], type=pa.list_(pa.string())),
+        #     pa.array([time_list], type=pa.list_(pa.float32())),
+        #     pa.array([flux_list], type=pa.list_(pa.float32())),
+        #     pa.array([flux_err_list], type=pa.list_(pa.float32())),
+        # ]
 
-        columns["lightcurve"] = pa.StructArray.from_arrays(
-            lightcurve_arrays, names=["band", "time", "flux", "flux_err"]
-        )
+        # columns["lightcurve"] = pa.StructArray.from_arrays(
+        #     lightcurve_arrays, names=["band", "time", "flux", "flux_err"]
+        # )
 
         # 6. Add float features
-        for f in self.FLOAT_FEATURES:
-            columns[f] = pa.array([data[f][()].astype(np.float32)])
+        # for f in self.FLOAT_FEATURES:
+        #     columns[f] = pa.array([data[f][()].astype(np.float32)])
 
         # 7. Add string features
-        columns["obj_type"] = pa.array([obj_type])
+        # columns["obj_type"] = pa.array([obj_type])
 
         # 8. Add object_id
-        columns["object_id"] = pa.array([object_id])
+        # columns["object_id"] = pa.array([object_id])
 
         # Create table with schema
         schema = self.create_schema()
+        breakpoint()
         table = pa.table(columns, schema=schema)
 
         return table

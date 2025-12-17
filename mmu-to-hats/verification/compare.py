@@ -234,7 +234,11 @@ def main(file1, file2, allowed_mismatch_columns):
             for sample in issue["samples"]:
                 msg += f"\n    - Index {sample['index']}: Left = {sample['left']}, Right = {sample['right']}"
         print(msg)
-    issues_leading_to_failure = [issue for issue in issues if issue["column"] not in allowed_mismatch_columns.split(",")]
+    issues_leading_to_failure = [
+        issue
+        for issue in issues
+        if issue["column"] not in allowed_mismatch_columns.split(",")
+    ]
     if len(issues_leading_to_failure) > 0:
         exit(1)
     exit(0)

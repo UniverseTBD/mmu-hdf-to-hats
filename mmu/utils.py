@@ -18,9 +18,9 @@ def _file_to_catalog(filename: str, keys: List[str]):
         for k in keys:
             value = data[k][()]  # Get the value
             # Convert bytes dtype to unicode for astropy compatibility
-            if hasattr(value, 'dtype') and value.dtype.kind == 'S':
+            if hasattr(value, "dtype") and value.dtype.kind == "S":
                 # Wrap scalar in array and convert bytes to unicode
-                table_data[k] = np.atleast_1d(value).astype('U')
+                table_data[k] = np.atleast_1d(value).astype("U")
             else:
                 table_data[k] = np.atleast_1d(value)
         return Table(table_data)
