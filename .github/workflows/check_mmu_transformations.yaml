@@ -57,6 +57,7 @@ jobs:
           - gaia
           - sdss
           - vipers
+          - swift_sne_ia
           # todo: add more catalogs here once they're ready
     steps:
       - uses: actions/checkout@v4
