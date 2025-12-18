@@ -1,29 +1,26 @@
-[build-system]
-requires = ["setuptools", "setuptools-scm"]
-build-backend = "setuptools.build_meta"
-
 [project]
-name = "mmu"
-authors = [
-    {name = "Multimodal Universe Collaboration"},
-]
-description = "Large Astronomical Dataset for Foundation Models"
+name = "mmu-to-hats"
+version = "0.1.0"
+description = "Add your description here"
 readme = "README.md"
-license = {text = "MIT"}
-classifiers = [
-    "Programming Language :: Python :: 3",
+requires-python = ">=3.13"
+dependencies = [
+    "dask[distributed,diagnostics]",
+    "hats-import",
+    "h5py",
+    "huggingface_hub",
+    "numpy",
+    "pyarrow",
+    "universal_pathlib",
+    "click",
+    "datasets",
 ]
-dynamic = ["dependencies", "version"]
 
-[tool.setuptools.dynamic]
-dependencies = { file = "requirements.txt" }
-optional-dependencies = {bench = { file = ["bench-requirements.txt"] }}
+# add dev dependencies
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
 
-[tool.setuptools]
-packages = ["mmu"]
-
-[tool.setuptools_scm]
-write_to = "mmu/_version.py"
-
-[project.scripts]
-mmu_cli = "mmu.benchmark.trainer:trainer_cli"
+[tool.setuptools.packages.find]
+include = ["catalog_functions*", "verification*"]

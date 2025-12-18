@@ -1,5 +1,0 @@
-datasets
-astropy
-h5py
-pandas
-tqdm
