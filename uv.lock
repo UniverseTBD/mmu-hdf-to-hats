@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.13"
 
 [[package]]
@@ -858,6 +858,18 @@ wheels = [
 ]
 
 [[package]]
+name = "mmu"
+version = "1.0.1.dev334+g2dcff3dd5"
+source = { git = "https://github.com/MultimodalUniverse/MultimodalUniverse#2dcff3dd5fb4d5160024bb8c1d8c05ac85676de9" }
+dependencies = [
+    { name = "astropy" },
+    { name = "datasets" },
+    { name = "h5py" },
+    { name = "pandas" },
+    { name = "tqdm" },
+]
+
+[[package]]
 name = "mmu-to-hats"
 version = "0.1.0"
 source = { virtual = "." }
@@ -868,6 +880,7 @@ dependencies = [
     { name = "h5py" },
     { name = "hats-import" },
     { name = "huggingface-hub" },
+    { name = "mmu" },
     { name = "numpy" },
     { name = "pyarrow" },
     { name = "universal-pathlib" },
@@ -886,6 +899,7 @@ requires-dist = [
     { name = "h5py" },
     { name = "hats-import" },
     { name = "huggingface-hub" },
+    { name = "mmu", git = "https://github.com/MultimodalUniverse/MultimodalUniverse" },
     { name = "numpy" },
     { name = "pyarrow" },
     { name = "pytest", marker = "extra == 'dev'" },

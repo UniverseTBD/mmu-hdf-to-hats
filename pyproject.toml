@@ -14,6 +14,7 @@ dependencies = [
     "universal_pathlib",
     "click",
     "datasets",
+    "mmu",
 ]
 
 # add dev dependencies
@@ -24,3 +25,6 @@ dev = [
 
 [tool.setuptools.packages.find]
 include = ["catalog_functions*", "verification*"]
+
+[tool.uv.sources]
+mmu = { git = "https://github.com/MultimodalUniverse/MultimodalUniverse" }
