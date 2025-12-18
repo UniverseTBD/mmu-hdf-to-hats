@@ -36,7 +36,6 @@ jobs:
           path: mmu-to-hats/.venv
           key: ${{ runner.os }}-venv-${{ hashFiles('mmu-to-hats/pyproject.toml', 'mmu-to-hats/uv.lock') }}
       - name: Install uv and create venv
-        if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
           python -m pip install --upgrade uv
           cd mmu-to-hats && uv venv .venv && uv pip install '.[dev]'
