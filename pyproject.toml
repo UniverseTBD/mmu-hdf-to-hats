@@ -24,5 +24,4 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["catalog_functions*", "verification*"]
 include = ["catalog_functions*", "verification*", "mmu*"]
