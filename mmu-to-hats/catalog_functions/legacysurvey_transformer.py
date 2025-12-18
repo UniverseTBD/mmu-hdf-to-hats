@@ -39,6 +39,11 @@ class LegacySurveyTransformer(BaseTransformer):
         "Y",
     ]
 
+    DOUBLE_FEATURES = [
+        "ra",
+        "dec",
+    ]
+
     IMAGE_SIZE = 160
     BANDS = ["DES-G", "DES-R", "DES-I", "DES-Z"]
 
