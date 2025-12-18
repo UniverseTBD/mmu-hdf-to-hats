@@ -161,7 +161,8 @@ class MMUReader(InputReader):
 
 
 def input_file_list(path: UPath) -> list[str]:
-    path_list = sorted(list(path.rglob("*.hdf5")) + list(path.rglob("*.h5")))
+    suffixes = {".h5", ".hdf5"}
+    path_list = sorted(p for p in path.rglob("*.h*5") if p.suffix in suffixes)
     return [upath.path for upath in path_list]
 
 

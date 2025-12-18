@@ -13,6 +13,11 @@ class VIPERSTransformer(BaseTransformer):
     # Feature group definitions from vipers.py
     FLOAT_FEATURES = ["REDSHIFT", "REDFLAG", "EXPTIME", "NORM", "MAG"]
 
+    ASTROMETRY_FEATURES = [
+        "ra",
+        "dec",
+    ]
+
     def create_schema(self):
         """Create the output PyArrow schema."""
         fields = []
@@ -30,6 +35,8 @@ class VIPERSTransformer(BaseTransformer):
 
         # Add all float features
         for f in self.FLOAT_FEATURES:
+            fields.append(pa.field(f, pa.float32()))
+        for f in self.ASTROMETRY_FEATURES:
             fields.append(pa.field(f, pa.float32()))
 
         # Object ID
@@ -73,8 +80,10 @@ class VIPERSTransformer(BaseTransformer):
         # 2. Add float features
         for f in self.FLOAT_FEATURES:
             columns[f] = pa.array(data[f][:].astype(np.float32))
-
-        # 3. Add object_id
+        # 3. Add astrometry features
+        for f in self.ASTROMETRY_FEATURES:
+            columns[f] = pa.array(data[f][:].astype(np.float32))
+        # 4. Add object_id
         columns["object_id"] = pa.array([str(oid) for oid in data["object_id"][:]])
 
         # Create table with schema

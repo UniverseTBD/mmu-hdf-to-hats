@@ -141,13 +141,13 @@ class BTSbotTransformer(BaseTransformer):
         # 1. Create image sequence column
         # image_triplet shape: [n_objects, 63, 63, 3] for 3 views
         image_triplet = data["image_triplet"][:]
-        band_data = np.char.decode(data["band"][:])
+        band_data = np.char.decode(data["band"][:], encoding="utf-8") if isinstance(data["band"][0], bytes) else data["band"][:]
         scale_data = data["image_scale"][:]
 
         band_arrays = [[band_data[i], band_data[i], band_data[i]] for i in range(n_objects)]
         view_arrays = [self.VIEWS for _ in range(n_objects)]
         array_arrays = [[[row.tolist() for row in image_triplet[i, :, :, j]] for j in range(3)] for i in range(n_objects)]
-        scale_arrays = [[float(scale_data[i])] for i in range(n_objects)]
+        scale_arrays = [[float(scale_data[i]), float(scale_data[i]), float(scale_data[i])] for i in range(n_objects)]
 
         columns["band"] = pa.array(band_arrays, type=pa.list_(pa.string()))
         columns["view"] = pa.array(view_arrays, type=pa.list_(pa.string()))

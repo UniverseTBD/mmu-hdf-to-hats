@@ -12,8 +12,15 @@ dependencies = [
     "numpy",
     "pyarrow",
     "universal_pathlib",
+    "click",
+    "datasets",
+]
+
+# add dev dependencies
+[project.optional-dependencies]
+dev = [
+    "pytest",
 ]
 
 [tool.setuptools.packages.find]
-include = ["catalog_functions*"]
-exclude = ["verification*"]
+include = ["catalog_functions*", "verification*"]
