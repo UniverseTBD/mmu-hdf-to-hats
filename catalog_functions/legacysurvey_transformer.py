@@ -176,11 +176,13 @@ class LegacySurveyTransformer(BaseTransformer):
             names=["band", "flux", "mask", "ivar", "psf_fwhm", "scale"],
         )
 
-        # 2. Add blobmodel (2D uint8 array)
+        # 2. Add blobmodel (3D uint8 array)
         blobmodel_data = data["blobmodel"][:]
-        blobmodel_lists = [[row.tolist() for row in img] for img in blobmodel_data]
+        blobmodel_lists = [
+            [[pixel.tolist() for pixel in row] for row in img] for img in blobmodel_data
+        ]
         columns["blobmodel"] = pa.array(
-            blobmodel_lists, type=pa.list_(pa.list_(pa.uint8()))
+            blobmodel_lists, type=pa.list_(pa.list_(pa.list_(pa.uint8())))
         )
 
         # 3. Add RGB image (3D uint8 array)
@@ -206,6 +208,8 @@ class LegacySurveyTransformer(BaseTransformer):
             n_catalog_objects = len(data[f"catalog_FLUX_G"][i])
             for j in range(n_catalog_objects):
                 cat_type = data[f"catalog_TYPE"][i][j]
+                if isinstance(cat_type, np.int64):
+                    cat_type = str(cat_type)
                 if isinstance(cat_type, bytes):
                     cat_type = cat_type.decode("utf-8")
 
