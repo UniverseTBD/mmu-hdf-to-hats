@@ -5,14 +5,9 @@ on:
   push:
     branches:
       - main
-    # Only run on relevant paths-filers
-    paths:
-      - "mmu-to-hats/**"
   pull_request:
     branches:
       - main
-    paths:
-      - "mmu-to-hats/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -33,16 +28,16 @@ jobs:
         id: cache-venv
         uses: actions/cache@v4
         with:
-          path: mmu-to-hats/.venv
-          key: ${{ runner.os }}-venv-${{ hashFiles('mmu-to-hats/pyproject.toml', 'mmu-to-hats/uv.lock') }}
+          path: .venv
+          key: ${{ runner.os }}-venv-${{ hashFiles('pyproject.toml', 'uv.lock') }}
       - name: Install uv and create venv
         if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
           python -m pip install --upgrade uv
-          cd mmu-to-hats && uv venv .venv && uv pip install '.[dev]'
+          uv venv .venv && uv pip install '.[dev]'
       - name: run pytest
         run: |
-          cd mmu-to-hats && source .venv/bin/activate && pytest tests/
+          source .venv/bin/activate && pytest tests/
 
   check_transformations:
     needs: setup
@@ -67,10 +62,10 @@ jobs:
       - name: Restore virtual environment
         uses: actions/cache@v4
         with:
-          path: mmu-to-hats/.venv
-          key: ${{ runner.os }}-venv-${{ hashFiles('mmu-to-hats/pyproject.toml', 'mmu-to-hats/uv.lock') }}
+          path: .venv
+          key: ${{ runner.os }}-venv-${{ hashFiles('pyproject.toml', 'uv.lock') }}
       - name: Install uv
         run: python -m pip install --upgrade uv
       - name: Run transformation test for ${{ matrix.catalog }}
         run: |
-          cd mmu-to-hats && source .venv/bin/activate && python verify.py ${{ matrix.catalog }}
+          source .venv/bin/activate && python verify.py ${{ matrix.catalog }}
