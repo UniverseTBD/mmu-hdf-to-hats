@@ -25,6 +25,4 @@ dev = [
 
 [tool.setuptools.packages.find]
 include = ["catalog_functions*", "verification*"]
-
-[tool.uv.sources]
-mmu = { git = "https://github.com/MultimodalUniverse/MultimodalUniverse" }
+include = ["catalog_functions*", "verification*", "mmu*"]
