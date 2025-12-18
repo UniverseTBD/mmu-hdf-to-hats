@@ -43,7 +43,7 @@ jobs:
           cd mmu-to-hats && uv venv .venv && uv pip install '.[dev]'
       - name: tmate session (for debugging)
         if: ${{ github.event_name == 'workflow_dispatch' }}
-        uses: mxschmitt/action-tmate@v4
+        uses: mxschmitt/action-tmate@v3
       - name: Install dependencies if venv incomplete
         if: steps.cache-venv.outputs.cache-hit == 'true'
         run: |
