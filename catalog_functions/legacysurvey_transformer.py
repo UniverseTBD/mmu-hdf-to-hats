@@ -59,8 +59,8 @@ class LegacySurveyTransformer(BaseTransformer):
         )
         fields.append(pa.field("image", pa.list_(image_struct)))
 
-        # Blobmodel image (2D array)
-        fields.append(pa.field("blobmodel", pa.list_(pa.list_(pa.uint8()))))
+        # Blobmodel image (3D array)
+        fields.append(pa.field("blobmodel", pa.list_(pa.list_(pa.list_(pa.uint8())))))
 
         # RGB image (3D array: height x width x 3)
         fields.append(pa.field("rgb", pa.list_(pa.list_(pa.list_(pa.uint8())))))
@@ -149,32 +149,44 @@ class LegacySurveyTransformer(BaseTransformer):
             image_lists.append(images_for_object)
 
         # Create struct arrays
-        band_arrays = []
-        flux_arrays = []
-        mask_arrays = []
-        ivar_arrays = []
-        psf_fwhm_arrays = []
-        scale_arrays = []
+        #band_arrays = []
+        #flux_arrays = []
+        #mask_arrays = []
+        #ivar_arrays = []
+        #psf_fwhm_arrays = []
+        #scale_arrays = []
 
-        for obj_images in image_lists:
-            band_arrays.append([img["band"] for img in obj_images])
-            flux_arrays.append([img["flux"] for img in obj_images])
-            mask_arrays.append([img["mask"] for img in obj_images])
-            ivar_arrays.append([img["ivar"] for img in obj_images])
-            psf_fwhm_arrays.append([img["psf_fwhm"] for img in obj_images])
-            scale_arrays.append([img["scale"] for img in obj_images])
+        #for obj_images in image_lists:
+        #    band_arrays.append([img["band"] for img in obj_images])
+        #    flux_arrays.append([img["flux"] for img in obj_images])
+        #    mask_arrays.append([img["mask"] for img in obj_images])
+        #    ivar_arrays.append([img["ivar"] for img in obj_images])
+        #    psf_fwhm_arrays.append([img["psf_fwhm"] for img in obj_images])
+        #    scale_arrays.append([img["scale"] for img in obj_images])
 
-        columns["image"] = pa.StructArray.from_arrays(
+        #columns["image"] = pa.StructArray.from_arrays(
+        #    [
+        #        pa.array(band_arrays, type=pa.list_(pa.string())),
+        #        pa.array(flux_arrays, type=pa.list_(pa.list_(pa.list_(pa.float32())))),
+        #        pa.array(mask_arrays, type=pa.list_(pa.list_(pa.list_(pa.bool_())))),
+        #        pa.array(ivar_arrays, type=pa.list_(pa.list_(pa.list_(pa.float32())))),
+        #        pa.array(psf_fwhm_arrays, type=pa.list_(pa.float32())),
+        #        pa.array(scale_arrays, type=pa.list_(pa.float32())),
+        #    ],
+        #    names=["band", "flux", "mask", "ivar", "psf_fwhm", "scale"],
+        #)
+        # Create the image column as a list of structs
+        image_struct_type = pa.struct(
             [
-                pa.array(band_arrays, type=pa.list_(pa.string())),
-                pa.array(flux_arrays, type=pa.list_(pa.list_(pa.list_(pa.float32())))),
-                pa.array(mask_arrays, type=pa.list_(pa.list_(pa.list_(pa.bool_())))),
-                pa.array(ivar_arrays, type=pa.list_(pa.list_(pa.list_(pa.float32())))),
-                pa.array(psf_fwhm_arrays, type=pa.list_(pa.float32())),
-                pa.array(scale_arrays, type=pa.list_(pa.float32())),
-            ],
-            names=["band", "flux", "mask", "ivar", "psf_fwhm", "scale"],
+                pa.field("band", pa.string()),
+                pa.field("flux", pa.list_(pa.list_(pa.float32()))),
+                pa.field("mask", pa.list_(pa.list_(pa.bool_()))),
+                pa.field("ivar", pa.list_(pa.list_(pa.float32()))),
+                pa.field("psf_fwhm", pa.float32()),
+                pa.field("scale", pa.float32()),
+            ]
         )
+        columns["image"] = pa.array(image_lists, type=pa.list_(image_struct_type))
 
         # 2. Add blobmodel (3D uint8 array)
         blobmodel_data = data["blobmodel"][:]
@@ -230,50 +242,68 @@ class LegacySurveyTransformer(BaseTransformer):
             catalog_lists.append(catalog_for_object)
 
         # Convert catalog to PyArrow
-        catalog_arrays = {
-            "FLUX_G": [],
-            "FLUX_R": [],
-            "FLUX_I": [],
-            "FLUX_Z": [],
-            "TYPE": [],
-            "SHAPE_R": [],
-            "SHAPE_E1": [],
-            "SHAPE_E2": [],
-            "X": [],
-            "Y": [],
-        }
-        for cat_obj in catalog_lists:
-            for key in catalog_arrays.keys():
-                catalog_arrays[key].append([obj[key] for obj in cat_obj])
+        #catalog_arrays = {
+        #    "FLUX_G": [],
+        #    "FLUX_R": [],
+        #    "FLUX_I": [],
+        #    "FLUX_Z": [],
+        #    "TYPE": [],
+        #    "SHAPE_R": [],
+        #    "SHAPE_E1": [],
+        #    "SHAPE_E2": [],
+        #    "X": [],
+        #    "Y": [],
+        #}
+        #for cat_obj in catalog_lists:
+        #    for key in catalog_arrays.keys():
+        #        catalog_arrays[key].append([obj[key] for obj in cat_obj])
 
-        catalog_struct = pa.StructArray.from_arrays(
+        #catalog_struct = pa.StructArray.from_arrays(
+        #    [
+        #        pa.array(catalog_arrays["FLUX_G"], type=pa.list_(pa.float32())),
+        #        pa.array(catalog_arrays["FLUX_R"], type=pa.list_(pa.float32())),
+        #        pa.array(catalog_arrays["FLUX_I"], type=pa.list_(pa.float32())),
+        #        pa.array(catalog_arrays["FLUX_Z"], type=pa.list_(pa.float32())),
+        #        pa.array(catalog_arrays["TYPE"], type=pa.list_(pa.string())),
+        #        pa.array(catalog_arrays["SHAPE_R"], type=pa.list_(pa.float32())),
+        #        pa.array(catalog_arrays["SHAPE_E1"], type=pa.list_(pa.float32())),
+        #        pa.array(catalog_arrays["SHAPE_E2"], type=pa.list_(pa.float32())),
+        #        pa.array(catalog_arrays["X"], type=pa.list_(pa.float32())),
+        #        pa.array(catalog_arrays["Y"], type=pa.list_(pa.float32())),
+        #    ],
+        #    names=[
+        #        "FLUX_G",
+        #        "FLUX_R",
+        #        "FLUX_I",
+        #        "FLUX_Z",
+        #        "TYPE",
+        #        "SHAPE_R",
+        #        "SHAPE_E1",
+        #        "SHAPE_E2",
+        #        "X",
+        #        "Y",
+        #    ],
+        #)
+
+        #columns["catalog"] = catalog_struct
+
+        # Create catalog column as list of structs
+        catalog_struct_type = pa.struct(
             [
-                pa.array(catalog_arrays["FLUX_G"], type=pa.list_(pa.float32())),
-                pa.array(catalog_arrays["FLUX_R"], type=pa.list_(pa.float32())),
-                pa.array(catalog_arrays["FLUX_I"], type=pa.list_(pa.float32())),
-                pa.array(catalog_arrays["FLUX_Z"], type=pa.list_(pa.float32())),
-                pa.array(catalog_arrays["TYPE"], type=pa.list_(pa.string())),
-                pa.array(catalog_arrays["SHAPE_R"], type=pa.list_(pa.float32())),
-                pa.array(catalog_arrays["SHAPE_E1"], type=pa.list_(pa.float32())),
-                pa.array(catalog_arrays["SHAPE_E2"], type=pa.list_(pa.float32())),
-                pa.array(catalog_arrays["X"], type=pa.list_(pa.float32())),
-                pa.array(catalog_arrays["Y"], type=pa.list_(pa.float32())),
-            ],
-            names=[
-                "FLUX_G",
-                "FLUX_R",
-                "FLUX_I",
-                "FLUX_Z",
-                "TYPE",
-                "SHAPE_R",
-                "SHAPE_E1",
-                "SHAPE_E2",
-                "X",
-                "Y",
-            ],
+                pa.field("FLUX_G", pa.float32()),
+                pa.field("FLUX_R", pa.float32()),
+                pa.field("FLUX_I", pa.float32()),
+                pa.field("FLUX_Z", pa.float32()),
+                pa.field("TYPE", pa.string()),
+                pa.field("SHAPE_R", pa.float32()),
+                pa.field("SHAPE_E1", pa.float32()),
+                pa.field("SHAPE_E2", pa.float32()),
+                pa.field("X", pa.float32()),
+                pa.field("Y", pa.float32()),
+            ]
         )
-
-        columns["catalog"] = catalog_struct
+        columns["catalog"] = pa.array(catalog_lists, type=pa.list_(catalog_struct_type))
+         
 
         # 6. Add float features
         for f in self.FLOAT_FEATURES:
