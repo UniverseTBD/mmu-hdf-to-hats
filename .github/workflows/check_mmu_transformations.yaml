@@ -44,7 +44,7 @@ jobs:
       - name: Install dependencies if venv incomplete
         if: steps.cache-venv.outputs.cache-hit == 'true'
         run: |
-          cd mmu-to-hats && uv pip install '.[dev]'
+          cd mmu-to-hats && uv venv .venv && source .venv/bin/activate && uv pip install '.[dev]'
       - name: run pytest
         run: |
           cd mmu-to-hats && source .venv/bin/activate && pytest tests/
