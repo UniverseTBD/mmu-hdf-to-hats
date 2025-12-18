@@ -4,6 +4,15 @@ from datasets import load_from_disk
 import click
 from pathlib import Path
 import numpy as np
+from typing import TypedDict
+
+
+class ComparisonIssue(TypedDict):
+    type: str
+    message: str
+    column: str | None
+    samples: list | None
+    table: str | None
 
 
 def flatten_struct_columns(table):
@@ -40,6 +49,42 @@ def load_table(file_path):
     raise ValueError(f"Unsupported file type or format: {file_path}")
 
 
+def check_for_col(table, col_name, table_name) -> list[ComparisonIssue]:
+    col = next(
+        (col for col in table.column_names if col.lower() == col_name.lower()), None
+    )
+    if col is None:
+        return [
+            {
+                "type": "missing_column",
+                "message": f"Column '{col_name}' not found",
+                "column": col_name,
+                "samples": None,
+                "table": table_name,
+            }
+        ]
+    col_type = table.schema.field(col).type
+    # check if type is double, not float32
+    if pa.types.is_float64(col_type):
+        return []
+    return [
+        {
+            "type": "column_type_mismatch",
+            "message": f"Column '{col}' is of type {col_type}, expected float64",
+            "column": col,
+            "samples": None,
+            "table": table_name,
+        }
+    ]
+
+
+# Check for columns 'ra' and 'dec' case insensitive and make sure they are of type double
+def check_for_coordinate_cols(table, table_name) -> list[ComparisonIssue]:
+    ra_issues = check_for_col(table, "ra", table_name)
+    dec_issues = check_for_col(table, "dec", table_name)
+    return ra_issues + dec_issues
+
+
 def compare_tables(
     table1, table2, label1="Table 1", label2="Table 2", mismatch_number=3
 ):
@@ -65,6 +110,10 @@ def compare_tables(
                 "message": f"Row count mismatch: {label1} has {table1.num_rows} rows, {label2} has {table2.num_rows} rows",
             }
         )
+        # we cannot really compare more if row counts differ
+        return issues
+    issues += check_for_coordinate_cols(table1, label1)
+    issues += check_for_coordinate_cols(table2, label2)
 
     # Check columns
     cols1 = set(table1.column_names)
@@ -80,6 +129,7 @@ def compare_tables(
                 "type": "columns",
                 "column": None,
                 "message": f"{label1} has additional columns: {sorted(cols_only_in_1)}",
+                "table": label1,
             }
         )
 
@@ -89,6 +139,7 @@ def compare_tables(
                 "type": "columns",
                 "column": None,
                 "message": f"{label2} has additional columns: {sorted(cols_only_in_2)}",
+                "table": label2,
             }
         )
 
@@ -114,6 +165,7 @@ def compare_tables(
                     "type": "sorting",
                     "column": None,
                     "message": "No sortable column found in common columns - cannot compare row-by-row",
+                    "table": None,
                 }
             )
         else:
@@ -186,6 +238,7 @@ def compare_tables(
                             "message": f"Column '{col_name}' has differences",
                             "column": col_name,
                             "samples": sample_data,
+                            "table": None,
                         }
                     )
     return issues
@@ -234,7 +287,11 @@ def main(file1, file2, allowed_mismatch_columns):
             for sample in issue["samples"]:
                 msg += f"\n    - Index {sample['index']}: Left = {sample['left']}, Right = {sample['right']}"
         print(msg)
-    issues_leading_to_failure = [issue for issue in issues if issue["column"] not in allowed_mismatch_columns.split(",")]
+    issues_leading_to_failure = [
+        issue
+        for issue in issues
+        if issue["column"] not in allowed_mismatch_columns.split(",")
+    ]
     if len(issues_leading_to_failure) > 0:
         exit(1)
     exit(0)
