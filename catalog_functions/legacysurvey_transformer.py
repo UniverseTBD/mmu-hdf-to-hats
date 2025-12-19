@@ -294,16 +294,9 @@ class LegacySurveyTransformer(BaseTransformer):
         # 5. Add object_id (skip TYPE at top level - it's only in catalog now based on schema)
         columns["object_id"] = pa.array([str(oid) for oid in data["object_id"][:]])
 
-        # 6. Add ra/dec from the data if present, otherwise placeholders
-        if "ra" in data:
-            columns["ra"] = pa.array(data["ra"][:].astype(np.float64))
-        else:
-            columns["ra"] = pa.array([0.0] * n_objects, type=pa.float64())
-        
-        if "dec" in data:
-            columns["dec"] = pa.array(data["dec"][:].astype(np.float64))
-        else:
-            columns["dec"] = pa.array([0.0] * n_objects, type=pa.float64())
+        # 6. Add ra/dec from the data
+        columns["ra"] = pa.array(data["ra"][:].astype(np.float64))
+        columns["dec"] = pa.array(data["dec"][:].astype(np.float64))
 
         # Create table with schema
         schema = self.create_schema()
