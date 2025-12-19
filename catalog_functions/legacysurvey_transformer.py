@@ -279,10 +279,6 @@ class LegacySurveyTransformer(BaseTransformer):
                 if isinstance(cat_type, bytes):
                     # Convert string type to numeric
                     cat_type = cat_type.decode("utf-8")
-                if isinstance(cat_type, str):
-                    # Map string types to numeric values
-                    # This mapping should match what datasets does
-                    type_values.append(float(hash(cat_type) % 100))  # Placeholder
                 else:
                     type_values.append(float(cat_type))
             cat_entry["TYPE"] = type_values
