@@ -82,7 +82,9 @@ class SwiftSNeIaTransformer(BaseTransformer):
         columns["band"] = pa.array([band_array.tolist()], type=pa.list_(pa.string()))
         columns["time"] = pa.array([time_array.tolist()], type=pa.list_(pa.float32()))
         columns["flux"] = pa.array([flux_array.tolist()], type=pa.list_(pa.float32()))
-        columns["flux_err"] = pa.array([flux_err_array.tolist()], type=pa.list_(pa.float32()))
+        columns["flux_err"] = pa.array(
+            [flux_err_array.tolist()], type=pa.list_(pa.float32())
+        )
 
         # 5. Add float features
         for f in self.FLOAT_FEATURES:
