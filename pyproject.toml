@@ -13,7 +13,7 @@ dependencies = [
     "pyarrow",
     "universal_pathlib",
     "click",
-    "datasets",
+    "datasets>=4.0",
 ]
 
 # add dev dependencies

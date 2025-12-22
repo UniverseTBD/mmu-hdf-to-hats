@@ -1,4 +1,4 @@
-# NOTE: use datasets==3.6 for this
+# Process TESS dataset using the datasets library
 # Run this first
 # uv pip install -r requirements.txt
 # ./download_tess_hsc.sh
@@ -6,7 +6,7 @@ from datasets import load_dataset_builder, concatenate_datasets
 from mmu.utils import get_catalog
 
 # Load the dataset descriptions from local copy of the data
-tess = load_dataset_builder("data/MultimodalUniverse/v1/tess", trust_remote_code=True)
+tess = load_dataset_builder("data/MultimodalUniverse/v1/tess")
 tess.download_and_prepare()
 
 tess_catalog = get_catalog(tess, keys=["object_id", "RA", "DEC"])

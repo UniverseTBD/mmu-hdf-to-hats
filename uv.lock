@@ -881,7 +881,7 @@ dev = [
 requires-dist = [
     { name = "click" },
     { name = "dask", extras = ["distributed", "diagnostics"] },
-    { name = "datasets" },
+    { name = "datasets", specifier = ">=4.0" },
     { name = "h5py" },
     { name = "hats-import" },
     { name = "huggingface-hub" },

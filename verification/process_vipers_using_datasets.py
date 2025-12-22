@@ -1,4 +1,4 @@
-# NOTE: use datasets==3.6 for this
+# Process VIPERS dataset using the datasets library
 # Run this first
 # uv pip install -r requirements.txt
 # ./download_sdss_hsc.sh
@@ -6,7 +6,7 @@ from datasets import load_dataset_builder, concatenate_datasets
 from mmu.utils import get_catalog
 
 # Load the dataset descriptions from local copy of the data
-sdss = load_dataset_builder("data/MultimodalUniverse/v1/vipers", trust_remote_code=True)
+sdss = load_dataset_builder("data/MultimodalUniverse/v1/vipers")
 sdss.download_and_prepare()
 
 sdss_catalog = get_catalog(sdss)
