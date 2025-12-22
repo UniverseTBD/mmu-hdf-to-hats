@@ -51,7 +51,7 @@ def columns_equal_or_samples(arr1: np.ndarray, arr2:np.ndarray) -> tuple[bool, l
         # Find mismatched indices
         mask = ~np.isclose(arr1, arr2, rtol=1e-5, atol=1e-8, equal_nan=True)
         mismatch_indices = np.where(mask)[0][:3]
-        sample_data = [(i, arr1[i], arr2[i]) for i in mismatch_indices]
+        sample_data = [{"index": i, "left": arr1[i], "right": arr2[i]} for i in mismatch_indices]
         return False, sample_data
     return True, []
 
@@ -150,14 +150,14 @@ def compare_tables(
                     list2 = col2.combine_chunks().to_pylist()
                     columns_equal = list1 == list2
                     if not columns_equal:
-                        if isinstance(list1[0], list) and isinstance(list2[0], list) or isinstance(list1[0], list) and isinstance(list1[0][0], float) and isinstance(list2[0], list) and isinstance(list2[0][0], float):
+                        if isinstance(list1[0], list) and isinstance(list1[0][0], float) and isinstance(list2[0], list) and isinstance(list2[0][0], float):
                             arr1 = np.array(list1)
                             arr2 = np.array(list2)
                             columns_equal, sample_data = columns_equal_or_samples(arr1, arr2)
                         else:
                             # Find mismatched indices
                             mismatch_indices = [i for i in range(min(len(list1), len(list2))) if list1[i] != list2[i]]
-                            sample_data = [(i, list1[i], list2[i]) for i in mismatch_indices[:3]]
+                            sample_data = [{"index": i, "left": list1[i], "right": list2[i]} for i in mismatch_indices[:3]]
                 elif pa.types.is_floating(col_type):
                     arr1 = col1.to_numpy()
                     arr2 = col2.to_numpy()
@@ -231,7 +231,11 @@ def main(file1, file2, allowed_mismatch_columns):
         if "samples" in issue and issue["samples"]:
             msg += f" (showing {len(issue['samples'])} sample(s))"
             for sample in issue["samples"]:
-                msg += f"\n    - Index {sample['index']}: Left = {sample['left']}, Right = {sample['right']}"
+                try:
+                    msg += f"\n    - Index {sample['index']}: Left = {sample['left']}, Right = {sample['right']}"
+                except Exception:
+                    breakpoint()
+                    msg += f"\n    - Index {sample['index']}: Left = {sample['left']}, Right = {sample['right']}"
         print(msg)
     issues_leading_to_failure = [issue for issue in issues if issue["column"] not in allowed_mismatch_columns.split(",")]
     if len(issues_leading_to_failure) > 0:
