@@ -51,6 +51,10 @@ catalog_data = {
         "original-mmu": "data/MultimodalUniverse/v1/vipers_with_coordinates/",
         "rewritten": "data/vipers_hp1107_transformed.parquet",
     },
+    "manga": {
+        "original-mmu": "data/MultimodalUniverse/v1/manga_with_coordinates/",
+        "rewritten": "data/manga_hp385_transformed.parquet",
+    },
 }
 
 

@@ -180,6 +180,7 @@ class MaNGA(datasets.GeneratorBasedBuilder):
                 files = [files]
 
             # Use `dl_manager.iter_files` to skip hidden files in an extracted archive
+            breakpoint()
             files = [dl_manager.iter_files(file) for file in files]
 
             return [
