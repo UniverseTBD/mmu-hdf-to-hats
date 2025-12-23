@@ -1,5 +1,6 @@
 from verification.compare import compare_tables
 import pyarrow as pa
+import numpy as np
 
 
 def test_compare_basic():
@@ -21,6 +22,12 @@ def test_compare_multiple_columns():
     table2 = pa.table({"a": pa.array([1, 2, 4]), "b": pa.array([4, 5, 6])})
     issues = compare_tables(table1, table2, label1="Table 1", label2="Table 2")
     assert len(issues) == 1
+
+def test_compare_multiple_columns_nans():
+    table1 = pa.table({"a": pa.array([1, 2, 3]), "b": pa.array([4, 5, np.nan])})
+    table2 = pa.table({"a": pa.array([1, 2, 3]), "b": pa.array([4, 5, np.nan])})
+    issues = compare_tables(table1, table2, label1="Table 1", label2="Table 2")
+    assert len(issues) == 0
 
 def test_compare_multiple_columns_floating():
     table1 = pa.table({"a": pa.array([1., 2., 3.]), "b": pa.array([4., 5., 6.])})

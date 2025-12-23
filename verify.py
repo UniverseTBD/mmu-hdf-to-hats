@@ -47,6 +47,10 @@ catalog_data = {
         "original-mmu": "data/MultimodalUniverse/v1/sdss_with_coordinates/",
         "rewritten": "data/sdss_hp583_transformed.parquet",
     },
+    "tess": {
+        "original-mmu": "data/MultimodalUniverse/v1/tess_with_coordinates/",
+        "rewritten": "data/tess_hp2201_transformed.parquet",
+    },
     "vipers": {
         "original-mmu": "data/MultimodalUniverse/v1/vipers_with_coordinates/",
         "rewritten": "data/vipers_hp1107_transformed.parquet",

@@ -145,7 +145,7 @@ class MMUReader(InputReader):
             n_rows = h5_file[read_columns[0]].shape[0]
             chunk_size = max(1, n_rows // num_chunks)
             for i in range(0, n_rows, chunk_size):
-                if set(read_columns) == set(["ra", "dec"]):
+                if set([col.lower() for col in read_columns]) == set(["ra", "dec"]):
                     data = {
                         col: np_to_pyarrow_array(h5_file[col][i : i + chunk_size])
                         for col in read_columns
