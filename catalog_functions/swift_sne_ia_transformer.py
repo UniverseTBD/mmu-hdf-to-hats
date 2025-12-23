@@ -13,7 +13,8 @@ class SwiftSNeIaTransformer(BaseTransformer):
     # Feature definitions from swift_sne_ia.py
     STR_FEATURES = ["obj_type"]
 
-    FLOAT_FEATURES = ["redshift", "host_log_mass", "ra", "dec"]
+    FLOAT_FEATURES = ["redshift", "host_log_mass"]
+    DOUBLE_FEATURES = ["ra", "dec"]
 
     def create_schema(self):
         """Create the output PyArrow schema."""
@@ -28,6 +29,9 @@ class SwiftSNeIaTransformer(BaseTransformer):
         # Add all float features
         for f in self.FLOAT_FEATURES:
             fields.append(pa.field(f, pa.float32()))
+
+        for f in self.DOUBLE_FEATURES:
+            fields.append(pa.field(f, pa.float64()))
 
         # Add all string features
         for f in self.STR_FEATURES:
@@ -89,6 +93,9 @@ class SwiftSNeIaTransformer(BaseTransformer):
         # 5. Add float features
         for f in self.FLOAT_FEATURES:
             columns[f] = pa.array([np.float32(data[f][()])])
+
+        for f in self.DOUBLE_FEATURES:
+            columns[f] = pa.array([np.float64(data[f][()])])
 
         # 6. Add string features
         for f in self.STR_FEATURES:
