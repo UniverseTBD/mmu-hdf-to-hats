@@ -6,6 +6,25 @@ from pathlib import Path
 import numpy as np
 
 
+def get_all_field_names(schema, prefix=""):
+    """Recursively extract all field names from a schema, including nested struct fields.
+
+    Returns a set of field names like: {'col1', 'struct_col.field1', 'struct_col.field2'}
+    """
+    field_names = set()
+
+    for field in schema:
+        field_path = f"{prefix}{field.name}" if prefix else field.name
+        field_names.add(field_path)
+
+        # If this field is a struct, recurse into its fields
+        if pa.types.is_struct(field.type):
+            nested_names = get_all_field_names(field.type, prefix=f"{field_path}.")
+            field_names.update(nested_names)
+
+    return field_names
+
+
 def flatten_struct_columns(table):
     """Flatten nested struct columns to top-level columns."""
     new_columns = {}
@@ -19,7 +38,7 @@ def flatten_struct_columns(table):
             struct_col = col.combine_chunks()
             for i, field in enumerate(col_type):
                 if field.name not in new_columns:
-                    new_columns[field.name] = struct_col.field(i)
+                    new_columns[f"{col_name}.{field.name}"] = struct_col.field(i)
         else:
             new_columns[col_name] = col
 
@@ -39,7 +58,10 @@ def load_table(file_path):
 
     raise ValueError(f"Unsupported file type or format: {file_path}")
 
-def columns_equal_or_samples(arr1: np.ndarray, arr2:np.ndarray) -> tuple[bool, list[tuple[int, any, any]]]:
+
+def columns_equal_or_samples(
+    arr1: np.ndarray, arr2: np.ndarray
+) -> tuple[bool, list[tuple[int, any, any]]]:
     columns_equal = np.allclose(
         arr1,
         arr2,
@@ -51,10 +73,11 @@ def columns_equal_or_samples(arr1: np.ndarray, arr2:np.ndarray) -> tuple[bool, l
         # Find mismatched indices
         mask = ~np.isclose(arr1, arr2, rtol=1e-5, atol=1e-8, equal_nan=True)
         mismatch_indices = np.where(mask)[0][:3]
-        sample_data = [{"index": i, "left": arr1[i], "right": arr2[i]} for i in mismatch_indices]
+        sample_data = [
+            {"index": i, "left": arr1[i], "right": arr2[i]} for i in mismatch_indices
+        ]
         return False, sample_data
     return True, []
-
 
 
 def compare_tables(
@@ -64,18 +87,29 @@ def compare_tables(
     # general comparison report
     issues = []
     sample_data = []
-    # Compare schema before flattening
-    if table1.schema != table2.schema:
-        # find schema differences
-        in1_not_in2 = set(table1.schema).difference(set(table2.schema))
-        in2_not_in1 = set(table2.schema).difference(set(table1.schema))
-        differences = [f"Columns in {label1} but which are not present or different in {label2}: {[field.name for field in in1_not_in2]}",
-                       f"Columns in {label2} but which are not present or different in {label1}: {[field.name for field in in2_not_in1]}"]
+    # we'll ignore the column types in the schema comparison, since datasets can make some optimizations, e.g.
+    # list<item: extension<datasets.features.features.Array2DExtensionType<Array2DExtensionType>>>
+    fields1 = get_all_field_names(table1.schema)
+    fields2 = get_all_field_names(table2.schema)
+
+    fields_only_in1 = fields1 - fields2
+    fields_only_in2 = fields2 - fields1
+
+    if fields_only_in1 or fields_only_in2:
+        differences = []
+        if fields_only_in1:
+            differences.append(
+                f"Fields in {label1} but not in {label2}: {sorted(fields_only_in1)}"
+            )
+        if fields_only_in2:
+            differences.append(
+                f"Fields in {label2} but not in {label1}: {sorted(fields_only_in2)}"
+            )
         issues.append(
             {
                 "type": "schema",
                 "column": None,
-                "message": '\n'.join(differences),
+                "message": "\n".join(differences),
                 "samples": [],
             }
         )
@@ -165,14 +199,28 @@ def compare_tables(
                     list2 = col2.combine_chunks().to_pylist()
                     columns_equal = list1 == list2
                     if not columns_equal:
-                        if isinstance(list1[0], list) and isinstance(list1[0][0], float) and isinstance(list2[0], list) and isinstance(list2[0][0], float):
+                        if (
+                            isinstance(list1[0], list)
+                            and isinstance(list1[0][0], float)
+                            and isinstance(list2[0], list)
+                            and isinstance(list2[0][0], float)
+                        ):
                             arr1 = np.array(list1)
                             arr2 = np.array(list2)
-                            columns_equal, sample_data = columns_equal_or_samples(arr1, arr2)
+                            columns_equal, sample_data = columns_equal_or_samples(
+                                arr1, arr2
+                            )
                         else:
                             # Find mismatched indices
-                            mismatch_indices = [i for i in range(min(len(list1), len(list2))) if list1[i] != list2[i]]
-                            sample_data = [{"index": i, "left": list1[i], "right": list2[i]} for i in mismatch_indices[:3]]
+                            mismatch_indices = [
+                                i
+                                for i in range(min(len(list1), len(list2)))
+                                if list1[i] != list2[i]
+                            ]
+                            sample_data = [
+                                {"index": i, "left": list1[i], "right": list2[i]}
+                                for i in mismatch_indices[:3]
+                            ]
                 elif pa.types.is_floating(col_type):
                     arr1 = col1.to_numpy()
                     arr2 = col2.to_numpy()
@@ -246,9 +294,13 @@ def main(file1, file2, allowed_mismatch_columns):
         if "samples" in issue and issue["samples"]:
             msg += f" (showing {len(issue['samples'])} sample(s))"
             for sample in issue["samples"]:
-                 msg += f"\n    - Index {sample['index']}: Left = {sample['left']}, Right = {sample['right']}"
+                msg += f"\n    - Index {sample['index']}: Left = {sample['left']}, Right = {sample['right']}"
         print(msg)
-    issues_leading_to_failure = [issue for issue in issues if issue["column"] not in allowed_mismatch_columns.split(",")]
+    issues_leading_to_failure = [
+        issue
+        for issue in issues
+        if issue["column"] not in allowed_mismatch_columns.split(",")
+    ]
     if len(issues_leading_to_failure) > 0:
         exit(1)
     exit(0)
