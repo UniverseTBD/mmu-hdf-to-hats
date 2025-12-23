@@ -61,11 +61,26 @@ def compare_tables(
     table1, table2, label1="Table 1", label2="Table 2", mismatch_number=3
 ):
     """Compare two PyArrow tables and report all differences."""
-    table1 = flatten_struct_columns(table1)
-    table2 = flatten_struct_columns(table2)
     # general comparison report
     issues = []
     sample_data = []
+    # Compare schema before flattening
+    if table1.schema != table2.schema:
+        # find schema differences
+        in1_not_in2 = set(table1.schema).difference(set(table2.schema))
+        in2_not_in1 = set(table2.schema).difference(set(table1.schema))
+        differences = [f"Columns in {label1} but not in {label2}: {[field.name for field in in1_not_in2]}",
+                       f"Columns in {label2} but not in {label1}: {[field.name for field in in2_not_in1]}"]
+        issues.append(
+            {
+                "type": "schema",
+                "column": None,
+                "message": '\n'.join(differences),
+                "samples": [],
+            }
+        )
+    table1 = flatten_struct_columns(table1)
+    table2 = flatten_struct_columns(table2)
 
     print(f"\n{'=' * 70}")
     print(f"COMPARISON SUMMARY")
@@ -231,11 +246,7 @@ def main(file1, file2, allowed_mismatch_columns):
         if "samples" in issue and issue["samples"]:
             msg += f" (showing {len(issue['samples'])} sample(s))"
             for sample in issue["samples"]:
-                try:
-                    msg += f"\n    - Index {sample['index']}: Left = {sample['left']}, Right = {sample['right']}"
-                except Exception:
-                    breakpoint()
-                    msg += f"\n    - Index {sample['index']}: Left = {sample['left']}, Right = {sample['right']}"
+                 msg += f"\n    - Index {sample['index']}: Left = {sample['left']}, Right = {sample['right']}"
         print(msg)
     issues_leading_to_failure = [issue for issue in issues if issue["column"] not in allowed_mismatch_columns.split(",")]
     if len(issues_leading_to_failure) > 0:
