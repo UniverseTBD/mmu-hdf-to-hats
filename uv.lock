@@ -344,7 +344,7 @@ wheels = [
 
 [[package]]
 name = "dask"
-version = "2025.12.0"
+version = "2025.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -355,9 +355,9 @@ dependencies = [
     { name = "pyyaml" },
     { name = "toolz" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/49/ae/92fca08ff8fe3e8413842564dd55ee30c9cd9e07629e1bf4d347b005a5bf/dask-2025.12.0.tar.gz", hash = "sha256:8d478f2aabd025e2453cf733ad64559de90cf328c20209e4574e9543707c3e1b", size = 10995316, upload-time = "2025-12-12T14:59:10.885Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c3/f1/b4d8ccb5010ecba58a1799cb3c6b7ef5ed0d7d2add53adc1fc0d0ace56fe/dask-2025.3.0.tar.gz", hash = "sha256:322834f44ebc24abeb564c56ccb817c97d6e7af6be71ad0ad96b78b51f2e0e85", size = 10928728, upload-time = "2025-03-21T22:18:18.186Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6f/3a/2121294941227c548d4b5f897a8a1b5f4c44a58f5437f239e6b86511d78e/dask-2025.12.0-py3-none-any.whl", hash = "sha256:4213ce9c5d51d6d89337cff69de35d902aa0bf6abdb8a25c942a4d0281f3a598", size = 1481293, upload-time = "2025-12-12T14:58:59.32Z" },
+    { url = "https://files.pythonhosted.org/packages/bd/8a/3609033a4bfd7c9b3e8a4e8a5d6e318dfc06ab2e2d3b5cb0e01a60458858/dask-2025.3.0-py3-none-any.whl", hash = "sha256:b5d72bb33788904a218fd7da1850238517592358ecc79c30bb5c188a71df506d", size = 1437133, upload-time = "2025-03-21T22:18:07.656Z" },
 ]
 
 [package.optional-dependencies]
@@ -426,7 +426,7 @@ wheels = [
 
 [[package]]
 name = "distributed"
-version = "2025.12.0"
+version = "2025.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -445,9 +445,9 @@ dependencies = [
     { name = "urllib3" },
     { name = "zict" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4f/f7/25e4ed891f4b347a7c0e6ad6106b564938ddd6f1832aa03f1505d0949cb4/distributed-2025.12.0.tar.gz", hash = "sha256:b1e58f1b3d733885335817562ee1723379f23733e4ef3546f141080d9cb01a74", size = 2102841, upload-time = "2025-12-12T14:58:57.74Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2d/24/161ef76cdf39f38b4092ceae233f02f8eb673b2ef3c3f0d478f479e28c30/distributed-2025.3.0.tar.gz", hash = "sha256:84a68c91db2a106c752ca7845fba8cd92ad4f3545c0fb2d9b6dec0f44b225539", size = 1112159, upload-time = "2025-03-21T21:56:40.595Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/87/45/ca760deab4de448e6c0e3860fc187bcc49216eabda379f6ce68065158843/distributed-2025.12.0-py3-none-any.whl", hash = "sha256:35d18449002ea191e97f7e04a33e16f90c2243486be52d4d0f991072ea06b48a", size = 1008379, upload-time = "2025-12-12T14:58:54.195Z" },
+    { url = "https://files.pythonhosted.org/packages/e4/f1/196d28df38200133574922a3fa20b58629bb11cdabe185cbd9943d6fd371/distributed-2025.3.0-py3-none-any.whl", hash = "sha256:ebdacd181873b39bc30185857a5a856f051efaaf42ef2a8f507708857acdc6a9", size = 1018811, upload-time = "2025-03-21T21:56:37.951Z" },
 ]
 
 [[package]]
@@ -610,21 +610,22 @@ wheels = [
 
 [[package]]
 name = "hats-import"
-version = "0.5.1"
+version = "0.7.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "cloudpickle" },
     { name = "dask", extra = ["complete"] },
     { name = "deprecated" },
     { name = "hats" },
+    { name = "nested-pandas" },
     { name = "numpy" },
     { name = "pandas" },
-    { name = "pyarrow" },
     { name = "tqdm" },
     { name = "universal-pathlib" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/88/10/339020d26b2160c6b3de971e1ecab1a11d10f118a69102253fb1723a7964/hats_import-0.5.1.tar.gz", hash = "sha256:a1a8b37be08fb8abbd47bd1f3cca80b003164a12e869771d3bb7c7d10a28ffb4", size = 2960754, upload-time = "2025-04-17T13:08:20.595Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ed/ee/d6f80eb6cbec79c27b05655736c32e960dde0bfb17ab80db3e47cc7bf5df/hats_import-0.7.3.tar.gz", hash = "sha256:e4a0b7a7c4b546a74f6a40a5bc4ead3e56753c426a5a51109ba8fad175ddeca1", size = 3642383, upload-time = "2025-12-03T21:03:53.272Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0e/bd/cbaea650e01d5d13a57301e6aadad571657b3549ca919e063761c4a06121/hats_import-0.5.1-py3-none-any.whl", hash = "sha256:ec5d459af39d507c05fc52169da38b7cc9912d6daa419fcd596af49e24a3babd", size = 50965, upload-time = "2025-04-17T13:08:19.227Z" },
+    { url = "https://files.pythonhosted.org/packages/49/12/d560b629c1c252970a8e53aaebf40152b44d0d9bc119b9097a13613e19ed/hats_import-0.7.3-py3-none-any.whl", hash = "sha256:12cd62161b5f8530683070587c86284377da859567b6b1d94c592ee7fa9d5852", size = 65643, upload-time = "2025-12-03T21:03:51.858Z" },
 ]
 
 [[package]]
@@ -883,7 +884,7 @@ requires-dist = [
     { name = "dask", extras = ["distributed", "diagnostics"] },
     { name = "datasets" },
     { name = "h5py" },
-    { name = "hats-import" },
+    { name = "hats-import", specifier = ">=0.7.3" },
     { name = "huggingface-hub" },
     { name = "numpy" },
     { name = "pyarrow" },
