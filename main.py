@@ -149,7 +149,7 @@ class MMUReader(InputReader):
                 scalar_input = False
             chunk_size = max(1, n_rows // num_chunks)
             for i in range(0, n_rows, chunk_size):
-                if set(read_columns) == set(["ra", "dec"]):
+                if set([col.lower() for col in read_columns]) == set(["ra", "dec"]):
                     if scalar_input:
                         data = {
                             col: np_to_pyarrow_array(np.array([h5_file[col][()]]))
@@ -167,7 +167,8 @@ class MMUReader(InputReader):
                         data = h5_file
                     else:
                         data = {
-                            col: h5_file[col][i : i + chunk_size] for col in read_columns
+                            col: h5_file[col][i : i + chunk_size]
+                            for col in read_columns
                         }
                     table = self.transform.dataset_to_table(data)
                     yield table
