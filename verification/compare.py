@@ -69,8 +69,8 @@ def compare_tables(
         # find schema differences
         in1_not_in2 = set(table1.schema).difference(set(table2.schema))
         in2_not_in1 = set(table2.schema).difference(set(table1.schema))
-        differences = [f"Columns in {label1} but not in {label2}: {[field.name for field in in1_not_in2]}",
-                       f"Columns in {label2} but not in {label1}: {[field.name for field in in2_not_in1]}"]
+        differences = [f"Columns in {label1} but which are not present or different in {label2}: {[field.name for field in in1_not_in2]}",
+                       f"Columns in {label2} but which are not present or different in {label1}: {[field.name for field in in2_not_in1]}"]
         issues.append(
             {
                 "type": "schema",
