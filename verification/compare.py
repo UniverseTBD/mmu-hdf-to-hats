@@ -44,7 +44,6 @@ def compare_tables(
     table1, table2, label1="Table 1", label2="Table 2", mismatch_number=3
 ):
     """Compare two PyArrow tables and report all differences."""
-    breakpoint()
     table1 = flatten_struct_columns(table1)
     table2 = flatten_struct_columns(table2)
     # general comparison report
