@@ -9,7 +9,6 @@ output_file = "data/manga_hp385_transformed.parquet"
 print("Transforming HDF5 to Arrow table...")
 transformer = MaNGATransformer()
 table = transformer.transform_from_hdf5(input_file)
-breakpoint()
 
 print(f"\nTable shape: {table.num_rows} rows, {table.num_columns} columns")
 print(f"\nSchema:\n{table.schema}")
