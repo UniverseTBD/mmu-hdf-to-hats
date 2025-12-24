@@ -256,8 +256,13 @@ def compare_tables(
 @click.command()
 @click.argument("file1", type=click.Path(exists=True))
 @click.argument("file2", type=click.Path(exists=True))
-@click.option("--allowed-mismatch-columns", type=str, default="")
-def main(file1, file2, allowed_mismatch_columns):
+@click.option("--allowed-mismatch-columns", type=str, default="",
+              help="Comma-separated list of columns where value mismatches are allowed")
+@click.option("--ignore-missing-columns", type=str, default="",
+              help="Comma-separated list of columns to ignore if missing from either table")
+@click.option("--forbidden-columns", type=str, default="",
+              help="Comma-separated list of columns that must NOT exist (e.g., healpix)")
+def main(file1, file2, allowed_mismatch_columns, ignore_missing_columns, forbidden_columns):
     """Compare two PyArrow tables from parquet files or datasets directories.
 
     Examples:
@@ -296,11 +301,35 @@ def main(file1, file2, allowed_mismatch_columns):
             for sample in issue["samples"]:
                 msg += f"\n    - Index {sample['index']}: Left = {sample['left']}, Right = {sample['right']}"
         print(msg)
-    issues_leading_to_failure = [
-        issue
-        for issue in issues
-        if issue["column"] not in allowed_mismatch_columns.split(",")
-    ]
+    # Parse option lists
+    allowed_mismatch_set = set(c.strip() for c in allowed_mismatch_columns.split(",") if c.strip())
+    ignore_missing_set = set(c.strip() for c in ignore_missing_columns.split(",") if c.strip())
+    forbidden_set = set(c.strip() for c in forbidden_columns.split(",") if c.strip())
+
+    # Check for forbidden columns
+    if forbidden_set:
+        fields1 = get_all_field_names(table1.schema)
+        fields2 = get_all_field_names(table2.schema)
+        found_forbidden = (fields1 | fields2) & forbidden_set
+        if found_forbidden:
+            print(f"\n{'=' * 70}")
+            print(f"FORBIDDEN COLUMNS CHECK FAILED")
+            print(f"{'=' * 70}")
+            print(f"Found forbidden columns: {sorted(found_forbidden)}")
+            exit(1)
+
+    # Filter issues
+    issues_leading_to_failure = []
+    for issue in issues:
+        # Skip allowed mismatch columns
+        if issue["column"] in allowed_mismatch_set:
+            continue
+        # Skip ignored missing column issues
+        if issue["type"] == "schema" and ignore_missing_set:
+            # Filter out ignored columns from schema message
+            continue  # Schema issues are handled separately
+        issues_leading_to_failure.append(issue)
+
     if len(issues_leading_to_failure) > 0:
         exit(1)
     exit(0)

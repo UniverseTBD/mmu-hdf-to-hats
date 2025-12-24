@@ -93,6 +93,8 @@ class GaiaTransformer(BaseTransformer):
 
     FLAG_FEATURES = ["ruwe"]
 
+    # Note: healpix column removed per GitHub issue - use hats-import partitions instead
+
     CORRECTION_FEATURES = [
         "ecl_lat",
         "ecl_lon",
@@ -102,10 +104,6 @@ class GaiaTransformer(BaseTransformer):
         # This is duplicated here and in RV_FEATURES, but kept to keep in sync with original
         "rv_template_teff",
         "grvs_mag",
-    ]
-
-    INT64_FEATURES = [
-        "healpix",
     ]
 
     def create_schema(self):
@@ -156,10 +154,6 @@ class GaiaTransformer(BaseTransformer):
 
         for f in self.DOUBLE_FEATURES:
             fields.append(pa.field(f, pa.float64()))
-
-        # Int64 features
-        for f in self.INT64_FEATURES:
-            fields.append(pa.field(f, pa.int64()))
 
         # Object ID
         fields.append(pa.field("object_id", pa.int64()))
@@ -224,10 +218,6 @@ class GaiaTransformer(BaseTransformer):
         # 8. Add double double
         for f in self.DOUBLE_FEATURES:
             columns[f] = pa.array(data[f][:].astype(np.float64))
-
-        # 8. Add int64 features
-        for f in self.INT64_FEATURES:
-            columns[f] = pa.array(data[f][:].astype(np.int64))
 
         # 9. Add source_id as object_id
         columns["object_id"] = pa.array(data["source_id"][:].astype(np.int64))
