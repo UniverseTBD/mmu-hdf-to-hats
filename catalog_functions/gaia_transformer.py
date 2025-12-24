@@ -10,6 +10,10 @@ from catalog_functions.utils import np_to_pyarrow_array, BaseTransformer
 class GaiaTransformer(BaseTransformer):
     """Transforms Gaia HDF5 files to PyArrow tables with proper schema."""
 
+    DOUBLE_FEATURES = [
+        "ra", 
+        "dec",
+    ]
     # Feature group definitions from gaia.py
     SPECTRUM_FEATURES = [
         "coeff",
@@ -95,7 +99,8 @@ class GaiaTransformer(BaseTransformer):
         "nu_eff_used_in_astrometry",
         "pseudocolour",
         "astrometric_params_solved",
-        # Note: rv_template_teff is already in RV_FEATURES, not duplicated here
+        # This is duplicated here and in RV_FEATURES, but kept to keep in sync with original
+        "rv_template_teff",
         "grvs_mag",
     ]
 
@@ -108,32 +113,49 @@ class GaiaTransformer(BaseTransformer):
         fields = []
 
         # Spectral coefficients as list features
-        for f in self.SPECTRUM_FEATURES:
-            fields.append(pa.field(f, pa.list_(pa.float32())))
+        spectral_coeff_struct = pa.struct(
+            [pa.field(f, pa.list_(pa.float32())) for f in self.SPECTRUM_FEATURES]
+        )
+        fields.append(pa.field("spectral_coefficients", spectral_coeff_struct))
 
         # All photometry features as float32
-        for f in self.PHOTOMETRY_FEATURES:
-            fields.append(pa.field(f, pa.float32()))
+        photometry_struct = pa.struct(
+            [pa.field(f, pa.float32()) for f in self.PHOTOMETRY_FEATURES]
+        )
+        fields.append(pa.field("photometry", photometry_struct))
 
         # All astrometry features as float32
-        for f in self.ASTROMETRY_FEATURES:
-            fields.append(pa.field(f, pa.float32()))
+        astrometry_struct = pa.struct(
+            [pa.field(f, pa.float32()) for f in self.ASTROMETRY_FEATURES]
+        )
+        fields.append(pa.field("astrometry", astrometry_struct))
 
         # Radial velocity features as float32
-        for f in self.RV_FEATURES:
-            fields.append(pa.field(f, pa.float32()))
+        radial_velocity_struct = pa.struct(
+            [pa.field(f, pa.float32()) for f in self.RV_FEATURES]
+        )
+        fields.append(pa.field("radial_velocity", radial_velocity_struct))
 
         # GSPPHOT features as float32
-        for f in self.GSPPHOT_FEATURES:
-            fields.append(pa.field(f, pa.float32()))
+        gpphot_struct = pa.struct(
+            [pa.field(f, pa.float32()) for f in self.GSPPHOT_FEATURES]
+        )
+        fields.append(pa.field("gspphot", gpphot_struct))
 
         # Flag features as float32
-        for f in self.FLAG_FEATURES:
-            fields.append(pa.field(f, pa.float32()))
+        flag_struct = pa.struct(
+            [pa.field(f, pa.float32()) for f in self.FLAG_FEATURES]
+        )
+        fields.append(pa.field("flags", flag_struct))
 
         # Correction features as float32
-        for f in self.CORRECTION_FEATURES:
-            fields.append(pa.field(f, pa.float32()))
+        correction_struct = pa.struct(
+            [pa.field(f, pa.float32()) for f in self.CORRECTION_FEATURES]
+        )
+        fields.append(pa.field("corrections", correction_struct))
+
+        for f in self.DOUBLE_FEATURES:
+            fields.append(pa.field(f, pa.float64()))
 
         # Int64 features
         for f in self.INT64_FEATURES:
@@ -158,32 +180,50 @@ class GaiaTransformer(BaseTransformer):
         columns = {}
 
         # 1. Add spectral coefficient arrays
-        for f in self.SPECTRUM_FEATURES:
-            columns[f] = np_to_pyarrow_array(data[f][:])
+        columns["spectral_coefficients"] = pa.StructArray.from_arrays(
+            [np_to_pyarrow_array(data[f][:]) for f in self.SPECTRUM_FEATURES],
+            names=self.SPECTRUM_FEATURES,
+        )
 
         # 2. Add photometry features
-        for f in self.PHOTOMETRY_FEATURES:
-            columns[f] = pa.array(data[f][:].astype(np.float32))
+        columns["photometry"] = pa.StructArray.from_arrays(
+            [pa.array(data[f][:].astype(np.float32)) for f in self.PHOTOMETRY_FEATURES],
+            names=self.PHOTOMETRY_FEATURES,
+        )
 
         # 3. Add astrometry features
-        for f in self.ASTROMETRY_FEATURES:
-            columns[f] = pa.array(data[f][:].astype(np.float32))
+        columns["astrometry"] = pa.StructArray.from_arrays(
+            [pa.array(data[f][:].astype(np.float32)) for f in self.ASTROMETRY_FEATURES],
+            names=self.ASTROMETRY_FEATURES,
+        )
 
         # 4. Add radial velocity features
-        for f in self.RV_FEATURES:
-            columns[f] = pa.array(data[f][:].astype(np.float32))
+        columns["radial_velocity"] = pa.StructArray.from_arrays(
+            [pa.array(data[f][:].astype(np.float32)) for f in self.RV_FEATURES],
+            names=self.RV_FEATURES,
+        )
 
         # 5. Add GSPPHOT features
-        for f in self.GSPPHOT_FEATURES:
-            columns[f] = pa.array(data[f][:].astype(np.float32))
+        columns["gspphot"] = pa.StructArray.from_arrays(
+            [pa.array(data[f][:].astype(np.float32)) for f in self.GSPPHOT_FEATURES],
+            names=self.GSPPHOT_FEATURES,
+        )
 
         # 6. Add flag features
-        for f in self.FLAG_FEATURES:
-            columns[f] = pa.array(data[f][:].astype(np.float32))
+        columns["flags"] = pa.StructArray.from_arrays(
+            [pa.array(data[f][:].astype(np.float32)) for f in self.FLAG_FEATURES],
+            names=self.FLAG_FEATURES,
+        )
 
         # 7. Add correction features
-        for f in self.CORRECTION_FEATURES:
-            columns[f] = pa.array(data[f][:].astype(np.float32))
+        columns["corrections"] = pa.StructArray.from_arrays(
+            [pa.array(data[f][:].astype(np.float32)) for f in self.CORRECTION_FEATURES],
+            names=self.CORRECTION_FEATURES,
+        )
+
+        # 8. Add double double
+        for f in self.DOUBLE_FEATURES:
+            columns[f] = pa.array(data[f][:].astype(np.float64))
 
         # 8. Add int64 features
         for f in self.INT64_FEATURES:
