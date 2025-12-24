@@ -58,6 +58,7 @@ jobs:
           - sdss
           - tess
           - vipers
+          - manga
           # todo: add more catalogs here once they're ready
     steps:
       - uses: actions/checkout@v4
