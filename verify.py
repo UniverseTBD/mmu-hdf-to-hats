@@ -33,7 +33,7 @@ catalog_data = {
     "btsbot": {
         "original-mmu": "data/MultimodalUniverse/v1/btsbot_with_coordinates/",
         "rewritten": "data/btsbot_hp0313_transformed.parquet",
-        "allowed-mismatch-columns": "band",
+        "allowed-mismatch-columns": "image.band",
     },
     "desi": {
         "original-mmu": "data/MultimodalUniverse/v1/desi_with_coordinates/",
