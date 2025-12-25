@@ -21,10 +21,15 @@ class SwiftSNeIaTransformer(BaseTransformer):
         fields = []
 
         # Lightcurve data as flat list columns
-        fields.append(pa.field("band", pa.list_(pa.string())))
-        fields.append(pa.field("time", pa.list_(pa.float32())))
-        fields.append(pa.field("flux", pa.list_(pa.float32())))
-        fields.append(pa.field("flux_err", pa.list_(pa.float32())))
+        lightcurve_struct = pa.struct(
+            [
+                pa.field("band", pa.list_(pa.string())),
+                pa.field("time", pa.list_(pa.float32())),
+                pa.field("flux", pa.list_(pa.float32())),
+                pa.field("flux_err", pa.list_(pa.float32())),
+            ]
+        )
+        fields.append(pa.field("lightcurve", lightcurve_struct))
 
         # Add all float features
         for f in self.FLOAT_FEATURES:
@@ -83,11 +88,13 @@ class SwiftSNeIaTransformer(BaseTransformer):
         flux_err_array = np.asarray(data["flux_err"]).flatten().astype("float32")
 
         # 4. Create flat list columns (one list per row containing all observations)
-        columns["band"] = pa.array([band_array.tolist()], type=pa.list_(pa.string()))
-        columns["time"] = pa.array([time_array.tolist()], type=pa.list_(pa.float32()))
-        columns["flux"] = pa.array([flux_array.tolist()], type=pa.list_(pa.float32()))
-        columns["flux_err"] = pa.array(
-            [flux_err_array.tolist()], type=pa.list_(pa.float32())
+        columns["lightcurve"] = pa.StructArray.from_arrays(
+            [pa.array([band_array], type=pa.list_(pa.string())),
+             pa.array([time_array], type=pa.list_(pa.float32())),
+             pa.array([flux_array], type=pa.list_(pa.float32())),
+             pa.array([flux_err_array], type=pa.list_(pa.float32())),
+            ],
+            names=["band", "time", "flux", "flux_err"],
         )
 
         # 5. Add float features
