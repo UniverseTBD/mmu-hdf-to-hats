@@ -3,7 +3,7 @@
 # uv pip install -r requirements.txt
 # ./download_swift_sne_ia_hsc.sh
 from datasets import load_dataset_builder, concatenate_datasets
-from mmu.utils import get_catalog
+from utils import get_catalog
 
 # Load the dataset descriptions from local copy of the data
 swift_sne_ia = load_dataset_builder(

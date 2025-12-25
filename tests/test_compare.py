@@ -162,5 +162,7 @@ def test_compare_nested_vs_unnested():
         }
     )
     issues = compare_tables(nested_col, unnested_col, label1="Table 1", label2="Table 2")
-    assert len(issues) == 1
+    assert len(issues) == 3
     assert issues[0]["type"] == "schema"
+    assert issues[1]["type"] == "columns"
+    assert issues[2]["type"] == "columns"

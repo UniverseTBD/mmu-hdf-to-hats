@@ -7,6 +7,7 @@ from catalog_functions.utils import BaseTransformer
 
 class BTSbotTransformer(BaseTransformer):
     """Transforms BTSbot HDF5 files to PyArrow tables."""
+
     FLOAT_FEATURES = [
         "jd",
         "diffmaglim",
@@ -115,10 +116,19 @@ class BTSbotTransformer(BaseTransformer):
         fields = []
 
         # Image data as separate columns (lists since each object has 3 views)
-        fields.append(pa.field("band", pa.list_(pa.string())))
-        fields.append(pa.field("view", pa.list_(pa.string())))
-        fields.append(pa.field("array", pa.list_(pa.list_(pa.list_(pa.float32())))))  # list of 2D arrays
-        fields.append(pa.field("scale", pa.list_(pa.float32())))
+        fields.append(
+            pa.field(
+                "image",
+                pa.struct(
+                    [
+                        pa.field("band", pa.list_(pa.string())),
+                        pa.field("view", pa.list_(pa.string())),
+                        pa.field("array", pa.list_(pa.list_(pa.list_(pa.float32())))),
+                        pa.field("scale", pa.list_(pa.float32())),
+                    ]
+                ),
+            )
+        )
 
         for f in self.FLOAT_FEATURES:
             fields.append(pa.field(f, pa.float32()))
@@ -141,18 +151,34 @@ class BTSbotTransformer(BaseTransformer):
         # 1. Create image sequence column
         # image_triplet shape: [n_objects, 63, 63, 3] for 3 views
         image_triplet = data["image_triplet"][:]
-        band_data = np.char.decode(data["band"][:], encoding="utf-8") if isinstance(data["band"][0], bytes) else data["band"][:]
+        band_data = (
+            np.char.decode(data["band"][:], encoding="utf-8")
+            if isinstance(data["band"][0], bytes)
+            else data["band"][:]
+        )
         scale_data = data["image_scale"][:]
 
-        band_arrays = [[band_data[i] for i in range(len(self.VIEWS))] for _ in range(n_objects)]
+        band_arrays = [
+            [band_data[i] for i in range(len(self.VIEWS))] for _ in range(n_objects)
+        ]
         view_arrays = [self.VIEWS for _ in range(n_objects)]
-        array_arrays = [[[row.tolist() for row in image_triplet[i, :, :, j]] for j in range(3)] for i in range(n_objects)]
-        scale_arrays = [[float(scale_data[i]) for _j in range(3)] for i in range(n_objects) ]
+        array_arrays = [
+            [[row.tolist() for row in image_triplet[i, :, :, j]] for j in range(3)]
+            for i in range(n_objects)
+        ]
+        scale_arrays = [
+            [float(scale_data[i]) for _j in range(3)] for i in range(n_objects)
+        ]
 
-        columns["band"] = pa.array(band_arrays, type=pa.list_(pa.string()))
-        columns["view"] = pa.array(view_arrays, type=pa.list_(pa.string()))
-        columns["array"] = pa.array(array_arrays, type=pa.list_(pa.list_(pa.list_(pa.float32()))))
-        columns["scale"] = pa.array(scale_arrays, type=pa.list_(pa.float32()))
+        columns["image"] = pa.StructArray.from_arrays(
+            [
+                pa.array(band_arrays, type=pa.list_(pa.string())),
+                pa.array(view_arrays, type=pa.list_(pa.string())),
+                pa.array(array_arrays, type=pa.list_(pa.list_(pa.list_(pa.float32())))),
+                pa.array(scale_arrays, type=pa.list_(pa.float32())),
+            ],
+            names=["band", "view", "array", "scale"],
+        )
 
         # 2. Add float features
         for f in self.FLOAT_FEATURES:
@@ -165,10 +191,12 @@ class BTSbotTransformer(BaseTransformer):
             columns[f] = pa.array(data[f][:].astype(bool))
         for f in self.STRING_FEATURES:
             str_data = data[f][:]
-            columns[f] = pa.array([
-                s.decode("utf-8") if isinstance(s, bytes) else str(s)
-                for s in str_data
-            ])
+            columns[f] = pa.array(
+                [
+                    s.decode("utf-8") if isinstance(s, bytes) else str(s)
+                    for s in str_data
+                ]
+            )
         columns["object_id"] = pa.array(data["object_id"][:].astype(np.int64))
 
         return pa.table(columns, schema=self.create_schema())

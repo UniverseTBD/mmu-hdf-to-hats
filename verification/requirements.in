@@ -1,5 +1,4 @@
 datasets==3.6
--e .
 astropy==7.1
 scipy
 numpy<2
