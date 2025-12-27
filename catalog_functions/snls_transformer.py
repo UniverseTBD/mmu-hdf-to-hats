@@ -41,10 +41,9 @@ class SNLSTransformer(BaseTransformer):
         # Object ID
         fields.append(pa.field("object_id", pa.string()))
 
-        # Add ra, dec, healpix
+        # Add ra, dec
         fields.append(pa.field("ra", pa.float64()))
         fields.append(pa.field("dec", pa.float64()))
-        fields.append(pa.field("healpix", pa.int64()))
 
         return pa.schema(fields)
 
@@ -114,10 +113,9 @@ class SNLSTransformer(BaseTransformer):
         oid_str = oid.decode("utf-8") if isinstance(oid, bytes) else str(oid)
         columns["object_id"] = pa.array([oid_str])
 
-        # 5. Add ra, dec, healpix
+        # 5. Add ra, dec
         columns["ra"] = pa.array([np.float64(data["ra"][()])])
         columns["dec"] = pa.array([np.float64(data["dec"][()])])
-        columns["healpix"] = pa.array([np.int64(data["healpix"][()])])
 
         # Create table with schema
         schema = self.create_schema()

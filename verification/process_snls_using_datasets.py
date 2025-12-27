@@ -20,7 +20,6 @@ def match_snls_catalog_object_ids(example, catalog):
         **example,
         "ra": catalog_entry["ra"][0],
         "dec": catalog_entry["dec"][0],
-        "healpix": catalog_entry["healpix"][0],
     }
 
 
