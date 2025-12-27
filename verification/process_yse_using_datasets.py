@@ -2,8 +2,8 @@
 # Run this first
 # uv pip install -r requirements.txt
 # ./download_yse_hsc.sh
-from datasets import load_dataset_builder, concatenate_datasets
-from mmu.utils import get_catalog
+from datasets import load_dataset_builder
+from utils import get_catalog
 
 # Load the dataset descriptions from local copy of the data
 yse = load_dataset_builder("data/MultimodalUniverse/v1/yse", trust_remote_code=True)
@@ -20,7 +20,6 @@ def match_yse_catalog_object_ids(example, catalog):
         **example,
         "ra": catalog_entry["ra"][0],
         "dec": catalog_entry["dec"][0],
-        "healpix": catalog_entry["healpix"][0],
     }
 
 

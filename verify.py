@@ -59,6 +59,10 @@ catalog_data = {
         "original-mmu": "data/MultimodalUniverse/v1/swift_sne_ia_with_coordinates/",
         "rewritten": "data/swift_sne_ia_hp2158_transformed.parquet",
     },
+    "yse": {
+        "original-mmu": "data/MultimodalUniverse/v1/yse_with_coordinates/",
+        "rewritten": "data/yse_hp584_transformed.parquet",
+    },
 }
 
 
