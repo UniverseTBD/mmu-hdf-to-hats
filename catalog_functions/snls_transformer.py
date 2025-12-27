@@ -41,6 +41,10 @@ class SNLSTransformer(BaseTransformer):
         # Object ID
         fields.append(pa.field("object_id", pa.string()))
 
+        # Add ra, dec
+        fields.append(pa.field("ra", pa.float64()))
+        fields.append(pa.field("dec", pa.float64()))
+
         return pa.schema(fields)
 
     def dataset_to_table(self, data):
@@ -57,61 +61,56 @@ class SNLSTransformer(BaseTransformer):
         columns = {}
 
         # 1. Create lightcurve struct column
-        # Lightcurve data: band, time, flux, flux_err
-        lightcurve_data = data["lightcurve"][:]  # Shape varies by implementation
-        n_objects = len(data["object_id"][:])
+        # SNLS stores flux and time as 2D arrays (n_bands x n_times)
+        # We need to flatten them and create band labels
+        flux_data = data["flux"][:]  # Shape: (n_bands, n_times)
+        flux_err_data = data["flux_err"][:]  # Shape: (n_bands, n_times)
+        time_data = data["time"][:]  # Shape: (n_bands, n_times)
+        bands_str = data["bands"][()].decode("utf-8")
+        bands = bands_str.split(",")
 
-        band_lists = []
-        time_lists = []
-        flux_lists = []
-        flux_err_lists = []
+        # Flatten the data - convert numpy arrays directly to PyArrow
+        # Create band array by repeating band names for each time point
+        n_bands = flux_data.shape[0]
+        n_times = flux_data.shape[1]
+        band_array = np.array([bands[i // n_times] for i in range(n_bands * n_times)])
 
-        for i in range(n_objects):
-            lc = lightcurve_data[i]
-            bands = [
-                b.decode("utf-8") if isinstance(b, bytes) else str(b)
-                for b in lc["band"]
-            ]
-            times = lc["time"].astype(np.float32).tolist()
-            fluxes = lc["flux"].astype(np.float32).tolist()
-            flux_errs = lc["flux_err"].astype(np.float32).tolist()
+        # Flatten time, flux, and flux_err arrays
+        time_array = time_data.flatten().astype(np.float32)
+        flux_array = flux_data.flatten().astype(np.float32)
+        flux_err_array = flux_err_data.flatten().astype(np.float32)
 
-            band_lists.append(bands)
-            time_lists.append(times)
-            flux_lists.append(fluxes)
-            flux_err_lists.append(flux_errs)
-
+        # Create PyArrow arrays directly from numpy arrays (wrapped for single row)
         lightcurve_arrays = [
-            pa.array(band_lists, type=pa.list_(pa.string())),
-            pa.array(time_lists, type=pa.list_(pa.float32())),
-            pa.array(flux_lists, type=pa.list_(pa.float32())),
-            pa.array(flux_err_lists, type=pa.list_(pa.float32())),
+            pa.array([band_array], type=pa.list_(pa.string())),
+            pa.array([time_array], type=pa.list_(pa.float32())),
+            pa.array([flux_array], type=pa.list_(pa.float32())),
+            pa.array([flux_err_array], type=pa.list_(pa.float32())),
         ]
 
         columns["lightcurve"] = pa.StructArray.from_arrays(
             lightcurve_arrays, names=["band", "time", "flux", "flux_err"]
         )
 
-        # 2. Add float features
+        # 2. Add float features (these are scalars)
         for f in self.FLOAT_FEATURES:
-            columns[f] = pa.array(data[f][:].astype(np.float32))
+            val = data[f][()]
+            columns[f] = pa.array([np.float32(val)])
 
-        # 3. Add string features
+        # 3. Add string features (these are scalars)
         for f in self.STR_FEATURES:
-            columns[f] = pa.array(
-                [
-                    str(x.decode("utf-8") if isinstance(x, bytes) else x)
-                    for x in data[f][:]
-                ]
-            )
+            val = data[f][()]
+            val_str = val.decode("utf-8") if isinstance(val, bytes) else str(val)
+            columns[f] = pa.array([val_str])
 
-        # 4. Add object_id
-        columns["object_id"] = pa.array(
-            [
-                str(oid.decode("utf-8") if isinstance(oid, bytes) else oid)
-                for oid in data["object_id"][:]
-            ]
-        )
+        # 4. Add object_id (scalar)
+        oid = data["object_id"][()]
+        oid_str = oid.decode("utf-8") if isinstance(oid, bytes) else str(oid)
+        columns["object_id"] = pa.array([oid_str])
+
+        # 5. Add ra, dec
+        columns["ra"] = pa.array([np.float64(data["ra"][()])])
+        columns["dec"] = pa.array([np.float64(data["dec"][()])])
 
         # Create table with schema
         schema = self.create_schema()
