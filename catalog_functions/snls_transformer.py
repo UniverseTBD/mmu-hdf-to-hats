@@ -69,28 +69,23 @@ class SNLSTransformer(BaseTransformer):
         bands_str = data["bands"][()].decode("utf-8")
         bands = bands_str.split(",")
 
-        # Flatten the data
-        # Create indices for bands (repeat for each time point)
-        idxs = np.arange(0, flux_data.shape[0])
-        band_idxs = idxs.repeat(flux_data.shape[-1]).reshape(
-            len(bands), -1
-        )
+        # Flatten the data - convert numpy arrays directly to PyArrow
+        # Create band array by repeating band names for each time point
+        n_bands = flux_data.shape[0]
+        n_times = flux_data.shape[1]
+        band_array = np.array([bands[i // n_times] for i in range(n_bands * n_times)])
 
-        # Build lightcurve as lists
-        band_list = np.asarray([
-            bands[band_number]
-            for band_number in band_idxs.flatten().astype("int32")
-        ]).astype("str").tolist()
+        # Flatten time, flux, and flux_err arrays
+        time_array = time_data.flatten().astype(np.float32)
+        flux_array = flux_data.flatten().astype(np.float32)
+        flux_err_array = flux_err_data.flatten().astype(np.float32)
 
-        time_list = time_data.flatten().astype("float32").tolist()
-        flux_list = flux_data.flatten().astype("float32").tolist()
-        flux_err_list = flux_err_data.flatten().astype("float32").tolist()
-
+        # Create PyArrow arrays directly from numpy arrays (wrapped for single row)
         lightcurve_arrays = [
-            pa.array([band_list], type=pa.list_(pa.string())),
-            pa.array([time_list], type=pa.list_(pa.float32())),
-            pa.array([flux_list], type=pa.list_(pa.float32())),
-            pa.array([flux_err_list], type=pa.list_(pa.float32())),
+            pa.array([band_array], type=pa.list_(pa.string())),
+            pa.array([time_array], type=pa.list_(pa.float32())),
+            pa.array([flux_array], type=pa.list_(pa.float32())),
+            pa.array([flux_err_array], type=pa.list_(pa.float32())),
         ]
 
         columns["lightcurve"] = pa.StructArray.from_arrays(
