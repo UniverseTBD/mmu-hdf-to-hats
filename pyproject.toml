@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "dask[distributed,diagnostics]",
-    "hats-import",
+    "hats-import>=0.7.3",
     "h5py",
     "huggingface_hub",
     "numpy",
@@ -23,4 +23,4 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["catalog_functions*", "verification*"]
+include = ["catalog_functions*", "verification*", "mmu*"]

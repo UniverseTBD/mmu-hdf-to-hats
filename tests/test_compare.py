@@ -1,5 +1,6 @@
 from verification.compare import compare_tables
 import pyarrow as pa
+import numpy as np
 
 
 def test_compare_basic():
@@ -55,6 +56,11 @@ def test_compare_multiple_columns():
     issues = compare_tables(table1, table2, label1="Table 1", label2="Table 2")
     assert len(issues) == 1
 
+def test_compare_multiple_columns_nans():
+    table1 = pa.table({"a": pa.array([1, 2, 3]), "b": pa.array([4, 5, np.nan])})
+    table2 = pa.table({"a": pa.array([1, 2, 3]), "b": pa.array([4, 5, np.nan])})
+    issues = compare_tables(table1, table2, label1="Table 1", label2="Table 2")
+    assert len(issues) == 0
 
 def test_compare_multiple_columns_floating():
     table1 = pa.table({"a": pa.array([1.0, 2.0, 3.0]), "b": pa.array([4.0, 5.0, 6.0]), "ra": pa.array([10.0, 20.0, 30.0]), "dec": pa.array([-10.0, -20.0, -30.0])})
@@ -105,6 +111,9 @@ def test_col_only_in_one_table():
     table2 = pa.table({"a": pa.array([1, 2, 3]), "c": pa.array([7, 8, 9])})
     issues = compare_tables(table1, table2, label1="Table 1", label2="Table 2")
     assert len(issues) == 6  # one for missing 'b' and one for missing 'c'
+    assert issues[0]["type"] == "schema"
+    assert issues[1]["type"] == "columns"
+    assert issues[2]["type"] == "columns"
     assert issues[-2]["type"] == "columns"
     assert issues[-1]["type"] == "columns"
 
@@ -180,3 +189,30 @@ def test_compare_nested_passing():
     )
     issues = compare_tables(table1, table2, label1="Table 1", label2="Table 2")
     assert len(issues) == 0
+
+
+def test_compare_nested_vs_unnested():
+    nested_col = pa.table(
+        {
+            "index": pa.array([0, 1]),
+            "lightcurve": pa.array(
+                [
+                    {"time": [1.0, 2.0], "flux": [10.0, 25.0], "flux_err": [0.1, 0.2]},
+                    {"time": [3.0, 4.0], "flux": [30.0, 40.0], "flux_err": [0.3, 0.4]},
+                ]
+            )
+        }
+    )
+    unnested_col = pa.table(
+        {
+            "index": pa.array([0, 1]),
+            "time": pa.array([[1.0, 2.0], [3.0, 4.0]], type=pa.list_(pa.float32())),
+            "flux": pa.array([[10.0, 25.0], [30.0, 40.0]], type=pa.list_(pa.float32())),
+            "flux_err": pa.array([[0.1, 0.2], [0.3, 0.4]], type=pa.list_(pa.float32())),
+        }
+    )
+    issues = compare_tables(nested_col, unnested_col, label1="Table 1", label2="Table 2")
+    assert len(issues) == 3
+    assert issues[0]["type"] == "schema"
+    assert issues[1]["type"] == "columns"
+    assert issues[2]["type"] == "columns"

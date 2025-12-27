@@ -33,7 +33,7 @@ catalog_data = {
     "btsbot": {
         "original-mmu": "data/MultimodalUniverse/v1/btsbot_with_coordinates/",
         "rewritten": "data/btsbot_hp0313_transformed.parquet",
-        "allowed-mismatch-columns": "band",
+        "allowed-mismatch-columns": "image.band",
     },
     "desi": {
         "original-mmu": "data/MultimodalUniverse/v1/desi_with_coordinates/",
@@ -47,9 +47,17 @@ catalog_data = {
         "original-mmu": "data/MultimodalUniverse/v1/sdss_with_coordinates/",
         "rewritten": "data/sdss_hp583_transformed.parquet",
     },
+    "tess": {
+        "original-mmu": "data/MultimodalUniverse/v1/tess_with_coordinates/",
+        "rewritten": "data/tess_hp2201_transformed.parquet",
+    },
     "vipers": {
         "original-mmu": "data/MultimodalUniverse/v1/vipers_with_coordinates/",
         "rewritten": "data/vipers_hp1107_transformed.parquet",
+    },
+    "swift_sne_ia": {
+        "original-mmu": "data/MultimodalUniverse/v1/swift_sne_ia_with_coordinates/",
+        "rewritten": "data/swift_sne_ia_hp2158_transformed.parquet",
     },
 }
 
@@ -106,7 +114,7 @@ def run_single_catalog(catalog_name: str):
 
     # Step 3: Compare files
     click.echo(f"\nStep 3: Comparing {catalog_name} files...")
-    compare_command = f"python verification/compare.py {catalog_data[catalog_name]['original-mmu']} {catalog_data[catalog_name]['rewritten']}"
+    compare_command = f"python verification/compare.py --datasets-file {catalog_data[catalog_name]['original-mmu']} --rewritten-file {catalog_data[catalog_name]['rewritten']}"
     if "allowed-mismatch-columns" in catalog_data[catalog_name]:
         compare_command += f" --allowed-mismatch-columns {catalog_data[catalog_name]['allowed-mismatch-columns']}"
     result = subprocess.run(
