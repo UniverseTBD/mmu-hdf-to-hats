@@ -1,6 +1,0 @@
-datasets==3.6
-git+https://github.com/MultimodalUniverse/MultimodalUniverse.git
-astropy==7.1
-scipy
-numpy<2
-ipdb
