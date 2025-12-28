@@ -122,52 +122,45 @@ class HSCTransformer(BaseTransformer):
         image_scale = data["image_scale"][:]
 
         # Create struct of lists (matching datasets library output structure)
-        # For each object, collect all bands into lists
-        image_data_per_object = []
-        for i in range(n_objects):
-            bands_list = []
-            flux_list = []
-            ivar_list = []
-            mask_list = []
-            psf_fwhm_list = []
-            scale_list = []
+        # Decode band names once
+        band_names_decoded = []
+        for j in range(len(self.BANDS)):
+            band = image_band[0][j]
+            if isinstance(band, bytes):
+                band = band.decode("utf-8")
+            band_names_decoded.append(band)
 
-            for j in range(len(self.BANDS)):
-                # Get band name from data
-                band = image_band[i][j]
-                if isinstance(band, bytes):
-                    band = band.decode("utf-8")
-                bands_list.append(band)
+        # Build nested PyArrow arrays directly from numpy without intermediate copies
+        # For bands: same list repeated for each object
+        band_arrays = pa.array([band_names_decoded] * n_objects, type=pa.list_(pa.string()))
 
-                # Convert 2D arrays to lists of lists
-                flux_2d = image_array[i][j]
-                flux_list.append([row.tolist() for row in flux_2d])
+        # For 2D image data (flux, ivar, mask): reshape and convert efficiently
+        # Shape: (n_objects, n_bands, 160, 160) -> need list[list[list[float]]]
+        # Convert only the 2D arrays to list-of-rows (keeping rows as numpy arrays)
+        def build_nested_image_array(img_data, pa_type):
+            """Build nested list array from 4D numpy array.
 
-                ivar_2d = image_ivar[i][j]
-                ivar_list.append([row.tolist() for row in ivar_2d])
+            Converts 2D arrays (160x160) to list of numpy 1D arrays (160 rows).
+            This avoids converting individual pixels to Python scalars.
+            PyArrow will then use the numpy buffer protocol for the row data.
+            """
+            result = []
+            for i in range(n_objects):
+                obj_bands = []
+                for j in range(len(self.BANDS)):
+                    # Split 2D array into list of row arrays (no pixel-level copy)
+                    obj_bands.append([row for row in img_data[i, j]])
+                result.append(obj_bands)
+            return pa.array(result, type=pa.list_(pa.list_(pa.list_(pa_type))))
 
-                mask_2d = image_mask[i][j]
-                mask_list.append([row.tolist() for row in mask_2d])
+        flux_arrays = build_nested_image_array(image_array, pa.float32())
+        ivar_arrays = build_nested_image_array(image_ivar, pa.float32())
+        mask_arrays = build_nested_image_array(image_mask, pa.bool_())
 
-                psf_fwhm_list.append(float(image_psf_fwhm[i][j]))
-                scale_list.append(float(image_scale[i][j]))
-
-            image_data_per_object.append({
-                "band": bands_list,
-                "flux": flux_list,
-                "ivar": ivar_list,
-                "mask": mask_list,
-                "psf_fwhm": psf_fwhm_list,
-                "scale": scale_list,
-            })
-
-        # Create struct arrays for each object
-        band_arrays = pa.array([obj["band"] for obj in image_data_per_object], type=pa.list_(pa.string()))
-        flux_arrays = pa.array([obj["flux"] for obj in image_data_per_object], type=pa.list_(pa.list_(pa.list_(pa.float32()))))
-        ivar_arrays = pa.array([obj["ivar"] for obj in image_data_per_object], type=pa.list_(pa.list_(pa.list_(pa.float32()))))
-        mask_arrays = pa.array([obj["mask"] for obj in image_data_per_object], type=pa.list_(pa.list_(pa.list_(pa.bool_()))))
-        psf_fwhm_arrays = pa.array([obj["psf_fwhm"] for obj in image_data_per_object], type=pa.list_(pa.float32()))
-        scale_arrays = pa.array([obj["scale"] for obj in image_data_per_object], type=pa.list_(pa.float32()))
+        # For scalar lists (psf_fwhm, scale): each row is a list of 5 values
+        # Convert 2D array (n_objects, 5) to list of 1D arrays
+        psf_fwhm_arrays = pa.array([row for row in image_psf_fwhm.astype(np.float32)], type=pa.list_(pa.float32()))
+        scale_arrays = pa.array([row for row in image_scale.astype(np.float32)], type=pa.list_(pa.float32()))
 
         columns["image"] = pa.StructArray.from_arrays(
             [band_arrays, flux_arrays, ivar_arrays, mask_arrays, psf_fwhm_arrays, scale_arrays],
