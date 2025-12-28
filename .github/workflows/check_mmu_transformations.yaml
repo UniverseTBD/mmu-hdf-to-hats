@@ -57,6 +57,7 @@ jobs:
           - gaia
           - sdss
           - snls
+          - ps1_sne_ia
           - tess
           - vipers
           - swift_sne_ia

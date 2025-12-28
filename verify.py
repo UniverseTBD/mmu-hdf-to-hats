@@ -51,6 +51,10 @@ catalog_data = {
         "original-mmu": "data/MultimodalUniverse/v1/snls_with_coordinates/",
         "rewritten": "data/snls_hp0714_transformed.parquet",
     },
+    "ps1_sne_ia": {
+        "original-mmu": "data/MultimodalUniverse/v1/ps1_sne_ia_with_coordinates/",
+        "rewritten": "data/ps1_sne_ia_hp1105_transformed.parquet",
+    },
     "tess": {
         "original-mmu": "data/MultimodalUniverse/v1/tess_with_coordinates/",
         "rewritten": "data/tess_hp2201_transformed.parquet",
