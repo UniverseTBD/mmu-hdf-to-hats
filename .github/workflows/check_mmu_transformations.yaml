@@ -54,6 +54,7 @@ jobs:
         catalog:
           - btsbot
           - desi
+          - des_y3_sne_ia
           - gaia
           - gz10
           - hsc
