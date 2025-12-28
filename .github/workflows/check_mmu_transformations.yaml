@@ -55,6 +55,7 @@ jobs:
           - btsbot
           - desi
           - gaia
+          - hsc
           - sdss
           - snls
           - ps1_sne_ia
