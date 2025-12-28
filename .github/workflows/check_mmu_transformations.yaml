@@ -55,6 +55,7 @@ jobs:
           - btsbot
           - desi
           - des_y3_sne_ia
+          - foundation
           - gaia
           - gz10
           - hsc
