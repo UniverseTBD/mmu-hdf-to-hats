@@ -43,6 +43,10 @@ catalog_data = {
         "original-mmu": "data/MultimodalUniverse/v1/gaia_with_coordinates/",
         "rewritten": "data/gaia_hp1631_transformed.parquet",
     },
+    "hsc": {
+        "original-mmu": "data/MultimodalUniverse/v1/hsc_with_coordinates/",
+        "rewritten": "data/hsc_hp1106_transformed.parquet",
+    },
     "sdss": {
         "original-mmu": "data/MultimodalUniverse/v1/sdss_with_coordinates/",
         "rewritten": "data/sdss_hp583_transformed.parquet",

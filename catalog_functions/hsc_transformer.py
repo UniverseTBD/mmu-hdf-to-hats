@@ -64,6 +64,8 @@ class HSCTransformer(BaseTransformer):
         "y_sdssshape_shape12",
     ]
 
+    DOUBLE_FEATURES = ["ra", "dec"]
+
     IMAGE_SIZE = 160
     BANDS = ["G", "R", "I", "Z", "Y"]
 
@@ -71,22 +73,25 @@ class HSCTransformer(BaseTransformer):
         """Create the output PyArrow schema."""
         fields = []
 
-        # Image sequence with band, flux, ivar, mask, psf_fwhm, scale
+        # Image struct with lists of band data (matching datasets library output)
         image_struct = pa.struct(
             [
-                pa.field("band", pa.string()),
-                pa.field("flux", pa.list_(pa.list_(pa.float32()))),  # 2D array
-                pa.field("ivar", pa.list_(pa.list_(pa.float32()))),  # 2D array
-                pa.field("mask", pa.list_(pa.list_(pa.bool_()))),  # 2D array
-                pa.field("psf_fwhm", pa.float32()),
-                pa.field("scale", pa.float32()),
+                pa.field("band", pa.list_(pa.string())),
+                pa.field("flux", pa.list_(pa.list_(pa.list_(pa.float32())))),  # List of 2D arrays
+                pa.field("ivar", pa.list_(pa.list_(pa.list_(pa.float32())))),  # List of 2D arrays
+                pa.field("mask", pa.list_(pa.list_(pa.list_(pa.bool_())))),  # List of 2D arrays
+                pa.field("psf_fwhm", pa.list_(pa.float32())),
+                pa.field("scale", pa.list_(pa.float32())),
             ]
         )
-        fields.append(pa.field("image", pa.list_(image_struct)))
+        fields.append(pa.field("image", image_struct))
 
         # Add all float features
         for f in self.FLOAT_FEATURES:
             fields.append(pa.field(f, pa.float32()))
+
+        for f in self.DOUBLE_FEATURES:
+            fields.append(pa.field(f, pa.float64()))
 
         # Object ID
         fields.append(pa.field("object_id", pa.string()))
@@ -116,70 +121,65 @@ class HSCTransformer(BaseTransformer):
         image_psf_fwhm = data["image_psf_fwhm"][:]
         image_scale = data["image_scale"][:]
 
-        image_lists = []
+        # Create struct of lists (matching datasets library output structure)
+        # For each object, collect all bands into lists
+        image_data_per_object = []
         for i in range(n_objects):
-            images_for_object = []
-            for j, band_name in enumerate(self.BANDS):
+            bands_list = []
+            flux_list = []
+            ivar_list = []
+            mask_list = []
+            psf_fwhm_list = []
+            scale_list = []
+
+            for j in range(len(self.BANDS)):
                 # Get band name from data
                 band = image_band[i][j]
                 if isinstance(band, bytes):
                     band = band.decode("utf-8")
+                bands_list.append(band)
 
                 # Convert 2D arrays to lists of lists
                 flux_2d = image_array[i][j]
-                flux_list = [row.tolist() for row in flux_2d]
+                flux_list.append([row.tolist() for row in flux_2d])
 
                 ivar_2d = image_ivar[i][j]
-                ivar_list = [row.tolist() for row in ivar_2d]
+                ivar_list.append([row.tolist() for row in ivar_2d])
 
                 mask_2d = image_mask[i][j]
-                mask_list = [row.tolist() for row in mask_2d]
+                mask_list.append([row.tolist() for row in mask_2d])
 
-                images_for_object.append(
-                    {
-                        "band": band,
-                        "flux": flux_list,
-                        "ivar": ivar_list,
-                        "mask": mask_list,
-                        "psf_fwhm": float(image_psf_fwhm[i][j]),
-                        "scale": float(image_scale[i][j]),
-                    }
-                )
-            image_lists.append(images_for_object)
+                psf_fwhm_list.append(float(image_psf_fwhm[i][j]))
+                scale_list.append(float(image_scale[i][j]))
 
-        # Create struct arrays for images
-        band_arrays = []
-        flux_arrays = []
-        ivar_arrays = []
-        mask_arrays = []
-        psf_fwhm_arrays = []
-        scale_arrays = []
+            image_data_per_object.append({
+                "band": bands_list,
+                "flux": flux_list,
+                "ivar": ivar_list,
+                "mask": mask_list,
+                "psf_fwhm": psf_fwhm_list,
+                "scale": scale_list,
+            })
 
-        for obj_images in image_lists:
-            band_arrays.append([img["band"] for img in obj_images])
-            flux_arrays.append([img["flux"] for img in obj_images])
-            ivar_arrays.append([img["ivar"] for img in obj_images])
-            mask_arrays.append([img["mask"] for img in obj_images])
-            psf_fwhm_arrays.append([img["psf_fwhm"] for img in obj_images])
-            scale_arrays.append([img["scale"] for img in obj_images])
+        # Create struct arrays for each object
+        band_arrays = pa.array([obj["band"] for obj in image_data_per_object], type=pa.list_(pa.string()))
+        flux_arrays = pa.array([obj["flux"] for obj in image_data_per_object], type=pa.list_(pa.list_(pa.list_(pa.float32()))))
+        ivar_arrays = pa.array([obj["ivar"] for obj in image_data_per_object], type=pa.list_(pa.list_(pa.list_(pa.float32()))))
+        mask_arrays = pa.array([obj["mask"] for obj in image_data_per_object], type=pa.list_(pa.list_(pa.list_(pa.bool_()))))
+        psf_fwhm_arrays = pa.array([obj["psf_fwhm"] for obj in image_data_per_object], type=pa.list_(pa.float32()))
+        scale_arrays = pa.array([obj["scale"] for obj in image_data_per_object], type=pa.list_(pa.float32()))
 
-        image_structs = pa.StructArray.from_arrays(
-            [
-                pa.array(band_arrays, type=pa.list_(pa.string())),
-                pa.array(flux_arrays, type=pa.list_(pa.list_(pa.list_(pa.float32())))),
-                pa.array(ivar_arrays, type=pa.list_(pa.list_(pa.list_(pa.float32())))),
-                pa.array(mask_arrays, type=pa.list_(pa.list_(pa.list_(pa.bool_())))),
-                pa.array(psf_fwhm_arrays, type=pa.list_(pa.float32())),
-                pa.array(scale_arrays, type=pa.list_(pa.float32())),
-            ],
+        columns["image"] = pa.StructArray.from_arrays(
+            [band_arrays, flux_arrays, ivar_arrays, mask_arrays, psf_fwhm_arrays, scale_arrays],
             names=["band", "flux", "ivar", "mask", "psf_fwhm", "scale"],
         )
-
-        columns["image"] = image_structs
 
         # 2. Add float features
         for f in self.FLOAT_FEATURES:
             columns[f] = pa.array(data[f][:].astype(np.float32))
+
+        for f in self.DOUBLE_FEATURES:
+            columns[f] = pa.array(data[f][:].astype(np.float64))
 
         # 3. Add object_id
         columns["object_id"] = pa.array([str(oid) for oid in data["object_id"][:]])
