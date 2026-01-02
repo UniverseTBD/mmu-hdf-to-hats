@@ -14,6 +14,7 @@ class MaNGATransformer(BaseTransformer):
     IMAGE_SIZE = 96
     IMAGE_FILTERS = ["G", "R", "I", "Z"]
     SPECTRUM_SIZE = 4563
+    DOUBLE_FEATURES = ["ra", "dec"]
 
     def create_schema(self):
         """Create the output PyArrow schema."""
@@ -25,13 +26,15 @@ class MaNGATransformer(BaseTransformer):
         fields.append(pa.field("spaxel_size_units", pa.string()))
 
         # Spaxels - list of structs with spectrum data
+        # Note: flux, ivar, mask, lsf, lambda are 2D arrays (shape: 1 x spectrum_size)
+        # to match datasets Array2D structure
         spaxel_struct = pa.struct(
             [
-                pa.field("flux", pa.list_(pa.float32())),
-                pa.field("ivar", pa.list_(pa.float32())),
-                pa.field("mask", pa.list_(pa.int64())),
-                pa.field("lsf", pa.list_(pa.float32())),
-                pa.field("lambda", pa.list_(pa.float32())),
+                pa.field("flux", pa.list_(pa.list_(pa.float32()))),  # 2D array
+                pa.field("ivar", pa.list_(pa.list_(pa.float32()))),  # 2D array
+                pa.field("mask", pa.list_(pa.list_(pa.int64()))),    # 2D array
+                pa.field("lsf", pa.list_(pa.list_(pa.float32()))),   # 2D array
+                pa.field("lambda", pa.list_(pa.list_(pa.float32()))),  # 2D array
                 pa.field("x", pa.int8()),
                 pa.field("y", pa.int8()),
                 pa.field("spaxel_idx", pa.int16()),
@@ -66,6 +69,8 @@ class MaNGATransformer(BaseTransformer):
         )
         fields.append(pa.field("images", pa.list_(image_struct)))
 
+        for f in self.DOUBLE_FEATURES:
+            fields.append(pa.field(f, pa.float64()))
         # Maps - list of DAP analysis maps
         map_struct = pa.struct(
             [
@@ -116,26 +121,26 @@ class MaNGATransformer(BaseTransformer):
             # 2. Process spaxels
             spaxels_list = []
             for spaxel_data in grp["spaxels"][:]:
-                # Reshape 1D arrays if needed (flux, ivar, mask, lsf, lambda)
+                # Reshape 1D arrays to 2D (shape: 1 x spectrum_size) to match datasets Array2D
                 flux = spaxel_data[0]
                 if flux.ndim == 1:
-                    flux = flux.reshape(1, -1)[0]
+                    flux = flux.reshape(1, -1)
 
                 ivar = spaxel_data[1]
                 if ivar.ndim == 1:
-                    ivar = ivar.reshape(1, -1)[0]
+                    ivar = ivar.reshape(1, -1)
 
                 mask = spaxel_data[2]
                 if mask.ndim == 1:
-                    mask = mask.reshape(1, -1)[0]
+                    mask = mask.reshape(1, -1)
 
                 lsf = spaxel_data[3]
                 if lsf.ndim == 1:
-                    lsf = lsf.reshape(1, -1)[0]
+                    lsf = lsf.reshape(1, -1)
 
                 lmbda = spaxel_data[4]
                 if lmbda.ndim == 1:
-                    lmbda = lmbda.reshape(1, -1)[0]
+                    lmbda = lmbda.reshape(1, -1)
 
                 flux_units = spaxel_data[8]
                 if isinstance(flux_units, bytes):
@@ -257,6 +262,8 @@ class MaNGATransformer(BaseTransformer):
                 oid = oid.decode("utf-8")
             row["object_id"] = str(oid)
 
+            for f in self.DOUBLE_FEATURES:
+                row[f] = float(grp[f][()])  # Read scalar value
             all_rows.append(row)
 
         # Convert to PyArrow table

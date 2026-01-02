@@ -3,6 +3,78 @@ import pyarrow as pa
 import numpy as np
 
 
+def test_compare_list_struct_field_with_exemptions():
+    # Schema: list of lightcurve points, each point has scalar values
+    schema = pa.schema(
+        [
+            pa.field(
+                "lightcurve",
+                pa.list_(
+                    pa.struct(
+                        [
+                            pa.field("group", pa.string()),
+                            pa.field("flux", pa.float32()),
+                            pa.field("flux_err", pa.float32()),
+                        ]
+                    )
+                ),
+            ),
+            pa.field("ra", pa.float64()),
+            pa.field("dec", pa.float64()),
+        ]
+    )
+
+    # Data: each row has a list of lightcurve points
+    table1 = pa.Table.from_pylist(
+        [
+            {
+                "lightcurve": [
+                    {"group": "g11", "flux": 10.0, "flux_err": 0.1},
+                    {"group": "g12", "flux": 20.0, "flux_err": 0.2},
+                ],
+                "ra": 10.0,
+                "dec": -10.0,
+            },
+            {
+                "lightcurve": [
+                    {"group": "g21", "flux": 30.0, "flux_err": 0.3},
+                    {"group": "g22", "flux": 40.0, "flux_err": 0.4},
+                ],
+                "ra": 20.0,
+                "dec": -20.0,
+            },
+        ],
+        schema=schema,
+    )
+
+    table2 = pa.Table.from_pylist(
+        [
+            {
+                "lightcurve": [
+                    {"group": 'b"g11"', "flux": 10.0, "flux_err": 0.1},
+                    {"group": 'b"g12"', "flux": 20.0, "flux_err": 0.2},
+                ],
+                "ra": 10.0,
+                "dec": -10.0,
+            },
+            {
+                "lightcurve": [
+                    {"group": 'b"g21"', "flux": 30.0, "flux_err": 0.3},
+                    {"group": 'b"g22"', "flux": 40.0, "flux_err": 0.4},
+                ],
+                "ra": 20.0,
+                "dec": -20.0,
+            },
+        ],
+        schema=schema,
+    )
+    issues = compare_tables(table1, table2, label1="Table 1", label2="Table 2")
+    assert len(issues) == 1
+    assert issues[0]["type"] == "column_values"
+    assert issues[0]["column"] == "lightcurve.group"
+    assert issues[0]["message"] == "Column 'lightcurve.group' has differences"
+
+
 def test_compare_basic():
     table1 = pa.table(
         {
@@ -47,27 +119,68 @@ def test_compare_basic_float32():
     assert issues[1]["samples"][0]["right"] == 4
     assert issues[1]["type"] == "column_values"
     assert issues[1]["message"] == "Column 'a' has differences"
-    assert (
-        issues[0]["message"]
-        == "Column 'dec' is of type float, expected float64"
-    )
+    assert issues[0]["message"] == "Column 'dec' is of type float, expected float64"
 
 
 def test_compare_multiple_columns():
-    table1 = pa.table({"a": pa.array([1, 2, 3]), "b": pa.array([4, 5, 6]), "ra": pa.array([10.0, 20.0, 30.0]), "dec": pa.array([-10.0, -20.0, -30.0])})
-    table2 = pa.table({"a": pa.array([1, 2, 4]), "b": pa.array([4, 5, 6]), "ra": pa.array([10.0, 20.0, 30.0]).cast(pa.float64()), "dec": pa.array([-10.0, -20.0, -30.0]).cast(pa.float64())})
+    table1 = pa.table(
+        {
+            "a": pa.array([1, 2, 3]),
+            "b": pa.array([4, 5, 6]),
+            "ra": pa.array([10.0, 20.0, 30.0]),
+            "dec": pa.array([-10.0, -20.0, -30.0]),
+        }
+    )
+    table2 = pa.table(
+        {
+            "a": pa.array([1, 2, 4]),
+            "b": pa.array([4, 5, 6]),
+            "ra": pa.array([10.0, 20.0, 30.0]).cast(pa.float64()),
+            "dec": pa.array([-10.0, -20.0, -30.0]).cast(pa.float64()),
+        }
+    )
     issues = compare_tables(table1, table2, label1="Table 1", label2="Table 2")
     assert len(issues) == 1
 
+
 def test_compare_multiple_columns_nans():
-    table1 = pa.table({"a": pa.array([1, 2, 3]), "b": pa.array([4, 5, np.nan]), "ra": pa.array([10.0, 20.0, 30.0]), "dec": pa.array([-10.0, -20.0, -30.0])})
-    table2 = pa.table({"a": pa.array([1, 2, 3]), "b": pa.array([4, 5, np.nan]), "ra": pa.array([10.0, 20.0, 30.0]).cast(pa.float64()), "dec": pa.array([-10.0, -20.0, -30.0]).cast(pa.float64())})
+    table1 = pa.table(
+        {
+            "a": pa.array([1, 2, 3]),
+            "b": pa.array([4, 5, np.nan]),
+            "ra": pa.array([10.0, 20.0, 30.0]),
+            "dec": pa.array([-10.0, -20.0, -30.0]),
+        }
+    )
+    table2 = pa.table(
+        {
+            "a": pa.array([1, 2, 3]),
+            "b": pa.array([4, 5, np.nan]),
+            "ra": pa.array([10.0, 20.0, 30.0]).cast(pa.float64()),
+            "dec": pa.array([-10.0, -20.0, -30.0]).cast(pa.float64()),
+        }
+    )
     issues = compare_tables(table1, table2, label1="Table 1", label2="Table 2")
     assert len(issues) == 0
 
+
 def test_compare_multiple_columns_floating():
-    table1 = pa.table({"a": pa.array([1.0, 2.0, 3.0]), "b": pa.array([4.0, 5.0, 6.0]), "ra": pa.array([10.0, 20.0, 30.0]), "dec": pa.array([-10.0, -20.0, -30.0])})
-    table2 = pa.table({"a": pa.array([1.0, 2.0, 4.0]), "b": pa.array([4.0, 5.0, 6.0]), "ra": pa.array([10.0, 20.0, 30.0]).cast(pa.float64()), "dec": pa.array([-10.0, -20.0, -30.0]).cast(pa.float64())})
+    table1 = pa.table(
+        {
+            "a": pa.array([1.0, 2.0, 3.0]),
+            "b": pa.array([4.0, 5.0, 6.0]),
+            "ra": pa.array([10.0, 20.0, 30.0]),
+            "dec": pa.array([-10.0, -20.0, -30.0]),
+        }
+    )
+    table2 = pa.table(
+        {
+            "a": pa.array([1.0, 2.0, 4.0]),
+            "b": pa.array([4.0, 5.0, 6.0]),
+            "ra": pa.array([10.0, 20.0, 30.0]).cast(pa.float64()),
+            "dec": pa.array([-10.0, -20.0, -30.0]).cast(pa.float64()),
+        }
+    )
     issues = compare_tables(table1, table2, label1="Table 1", label2="Table 2")
     assert len(issues) == 1
 
@@ -110,7 +223,9 @@ def test_preferred_sort_column():
         {"object_id": pa.array(["1", "2", "4"]), "b": pa.array([4.0, 5.0, 6.0])}
     )
     issues = compare_tables(table1, table2, label1="Table 1", label2="Table 2")
-    assert len(issues) == 3  # 1 issue for object_id mismatch + 2 issues for missing ra, dec for table2
+    assert (
+        len(issues) == 3
+    )  # 1 issue for object_id mismatch + 2 issues for missing ra, dec for table2
 
 
 def test_col_only_in_one_table():
@@ -118,16 +233,55 @@ def test_col_only_in_one_table():
     table2 = pa.table({"a": pa.array([1, 2, 3]), "c": pa.array([7, 8, 9])})
     issues = compare_tables(table1, table2, label1="Table 1", label2="Table 2")
     assert len(issues) == 5
-    assert issues[0] == {'type': 'schema', 'column': None, 'message': "Fields in Table 1 but not in Table 2: ['b']\nFields in Table 2 but not in Table 1: ['c']", 'samples': []}
-    assert issues[1] == {'type': 'missing_column', 'message': "Column 'ra' not found", 'column': 'ra', 'samples': None, 'table': 'Table 2'}
-    assert issues[2] == {'type': 'missing_column', 'message': "Column 'dec' not found", 'column': 'dec', 'samples': None, 'table': 'Table 2'}
-    assert issues[3] == {'type': 'columns', 'column': None, 'message': "Table 1 has additional columns: ['b']", 'table': 'Table 1'}
-    assert issues[4] == {'type': 'columns', 'column': None, 'message': "Table 2 has additional columns: ['c']", 'table': 'Table 2'}
+    assert issues[0] == {
+        "type": "schema",
+        "column": None,
+        "message": "Fields in Table 1 but not in Table 2: ['b']\nFields in Table 2 but not in Table 1: ['c']",
+        "samples": [],
+    }
+    assert issues[1] == {
+        "type": "missing_column",
+        "message": "Column 'ra' not found",
+        "column": "ra",
+        "samples": None,
+        "table": "Table 2",
+    }
+    assert issues[2] == {
+        "type": "missing_column",
+        "message": "Column 'dec' not found",
+        "column": "dec",
+        "samples": None,
+        "table": "Table 2",
+    }
+    assert issues[3] == {
+        "type": "columns",
+        "column": None,
+        "message": "Table 1 has additional columns: ['b']",
+        "table": "Table 1",
+    }
+    assert issues[4] == {
+        "type": "columns",
+        "column": None,
+        "message": "Table 2 has additional columns: ['c']",
+        "table": "Table 2",
+    }
 
 
 def test_compare_unequal_rows():
-    table1 = pa.table({"a": pa.array([1, 2, 3]), "ra": pa.array([10.0, 20.0, 30.0]), "dec": pa.array([-10.0, -20.0, -30.0])})
-    table2 = pa.table({"a": pa.array([1, 2, 3, 4]), "ra": pa.array([10.0, 20.0, 30.0, 40.0]), "dec": pa.array([-10.0, -20.0, -30.0, -40.0])})
+    table1 = pa.table(
+        {
+            "a": pa.array([1, 2, 3]),
+            "ra": pa.array([10.0, 20.0, 30.0]),
+            "dec": pa.array([-10.0, -20.0, -30.0]),
+        }
+    )
+    table2 = pa.table(
+        {
+            "a": pa.array([1, 2, 3, 4]),
+            "ra": pa.array([10.0, 20.0, 30.0, 40.0]),
+            "dec": pa.array([-10.0, -20.0, -30.0, -40.0]),
+        }
+    )
     label1 = "t1"
     label2 = "t2"
     issues = compare_tables(table1, table2, label1="t1", label2="t2")
@@ -207,7 +361,7 @@ def test_compare_nested_vs_unnested():
                     {"time": [1.0, 2.0], "flux": [10.0, 25.0], "flux_err": [0.1, 0.2]},
                     {"time": [3.0, 4.0], "flux": [30.0, 40.0], "flux_err": [0.3, 0.4]},
                 ]
-            )
+            ),
         }
     )
     unnested_col = pa.table(
@@ -218,10 +372,39 @@ def test_compare_nested_vs_unnested():
             "flux_err": pa.array([[0.1, 0.2], [0.3, 0.4]], type=pa.list_(pa.float32())),
         }
     )
-    issues = compare_tables(nested_col, unnested_col, label1="Table 1", label2="Table 2")
+    issues = compare_tables(
+        nested_col, unnested_col, label1="Table 1", label2="Table 2"
+    )
     assert len(issues) == 5
-    assert issues[0] == {'type': 'schema', 'column': None, 'message': "Fields in Table 1 but not in Table 2: ['lightcurve', 'lightcurve.flux', 'lightcurve.flux_err', 'lightcurve.time']\nFields in Table 2 but not in Table 1: ['flux', 'flux_err', 'time']", 'samples': []}
-    assert issues[1] == {'type': 'missing_column', 'message': "Column 'ra' not found", 'column': 'ra', 'samples': None, 'table': 'Table 2'}
-    assert issues[2] == {'type': 'missing_column', 'message': "Column 'dec' not found", 'column': 'dec', 'samples': None, 'table': 'Table 2'}
-    assert issues[3] == {'type': 'columns', 'column': None, 'message': "Table 1 has additional columns: ['lightcurve.flux', 'lightcurve.flux_err', 'lightcurve.time']", 'table': 'Table 1'}
-    assert issues[4] == {'type': 'columns', 'column': None, 'message': "Table 2 has additional columns: ['flux', 'flux_err', 'time']", 'table': 'Table 2'}
+    assert issues[0] == {
+        "type": "schema",
+        "column": None,
+        "message": "Fields in Table 1 but not in Table 2: ['lightcurve', 'lightcurve.flux', 'lightcurve.flux_err', 'lightcurve.time']\nFields in Table 2 but not in Table 1: ['flux', 'flux_err', 'time']",
+        "samples": [],
+    }
+    assert issues[1] == {
+        "type": "missing_column",
+        "message": "Column 'ra' not found",
+        "column": "ra",
+        "samples": None,
+        "table": "Table 2",
+    }
+    assert issues[2] == {
+        "type": "missing_column",
+        "message": "Column 'dec' not found",
+        "column": "dec",
+        "samples": None,
+        "table": "Table 2",
+    }
+    assert issues[3] == {
+        "type": "columns",
+        "column": None,
+        "message": "Table 1 has additional columns: ['lightcurve.flux', 'lightcurve.flux_err', 'lightcurve.time']",
+        "table": "Table 1",
+    }
+    assert issues[4] == {
+        "type": "columns",
+        "column": None,
+        "message": "Table 2 has additional columns: ['flux', 'flux_err', 'time']",
+        "table": "Table 2",
+    }
