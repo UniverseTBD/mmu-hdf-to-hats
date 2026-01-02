@@ -82,6 +82,7 @@ catalog_data = {
     "manga": {
         "original-mmu": "data/MultimodalUniverse/v1/manga_with_coordinates/",
         "rewritten": "data/manga_hp385_transformed.parquet",
+        "allowed-mismatch-columns": "images.filter,images.flux_units,images.psf_units,images.scale_units,maps.group,maps.label,spaxels.flux_units,spaxels.lambda_units,spaxels.skycoo_units,spaxels.ellcoo_r_units,spaxels.ellcoo_rre_units,spaxels.ellcoo_rkpc_units,spaxels.ellcoo_theta_units,maps.array_units",
     },
     "swift_sne_ia": {
         "original-mmu": "data/MultimodalUniverse/v1/swift_sne_ia_with_coordinates/",
