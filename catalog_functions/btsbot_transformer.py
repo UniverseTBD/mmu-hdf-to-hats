@@ -3,6 +3,7 @@
 import pyarrow as pa
 import numpy as np
 from catalog_functions.utils import BaseTransformer
+from datasets.features.features import Array2DExtensionType
 
 
 class BTSbotTransformer(BaseTransformer):
@@ -111,11 +112,15 @@ class BTSbotTransformer(BaseTransformer):
     ]
 
     VIEWS = ["science", "reference", "difference"]
+    _image_size = 63
 
     def create_schema(self):
         fields = []
 
-        # Image data as separate columns (lists since each object has 3 views)
+        # Image data as struct of lists (datasets Sequence creates this structure)
+        # array field is a list of Array2D extension types (one 63x63 array per view)
+        array_2d_type = Array2DExtensionType(shape=(self._image_size, self._image_size), dtype='float32')
+
         fields.append(
             pa.field(
                 "image",
@@ -123,7 +128,7 @@ class BTSbotTransformer(BaseTransformer):
                     [
                         pa.field("band", pa.list_(pa.string())),
                         pa.field("view", pa.list_(pa.string())),
-                        pa.field("array", pa.list_(pa.list_(pa.list_(pa.float32())))),
+                        pa.field("array", pa.list_(array_2d_type)),  # list of Array2D extension types
                         pa.field("scale", pa.list_(pa.float32())),
                     ]
                 ),
@@ -148,7 +153,7 @@ class BTSbotTransformer(BaseTransformer):
         columns = {}
         n_objects = len(data["object_id"][:])
 
-        # 1. Create image sequence column
+        # 1. Create image struct column (struct of lists, not list of structs)
         # image_triplet shape: [n_objects, 63, 63, 3] for 3 views
         image_triplet = data["image_triplet"][:]
         band_data = (
@@ -159,22 +164,41 @@ class BTSbotTransformer(BaseTransformer):
         scale_data = data["image_scale"][:]
 
         band_arrays = [
-            [band_data[i] for i in range(len(self.VIEWS))] for _ in range(n_objects)
+            [band_data[obj_idx] for _ in range(len(self.VIEWS))]
+            for obj_idx in range(n_objects)
         ]
         view_arrays = [self.VIEWS for _ in range(n_objects)]
+
+        # Create array data in storage format (list of list of lists for each 2D array)
         array_arrays = [
             [[row.tolist() for row in image_triplet[i, :, :, j]] for j in range(3)]
             for i in range(n_objects)
         ]
+
         scale_arrays = [
             [float(scale_data[i]) for _j in range(3)] for i in range(n_objects)
         ]
+
+        # Create Array2D extension type
+        array_2d_type = Array2DExtensionType(shape=(self._image_size, self._image_size), dtype='float32')
+
+        # Build array field using storage type structure
+        # Storage format: list<list<list<float>>> where each inner list<list<float>> is one Array2D
+        # We create the storage array and cast it to list<Array2D>
+        storage_type = pa.list_(array_2d_type.storage_type)  # list<list<list<float>>>
+        target_type = pa.list_(array_2d_type)  # list<Array2D>
+
+        # Create array with storage type
+        storage_array = pa.array(array_arrays, type=storage_type)
+
+        # Cast to extension type (this wraps the storage with extension metadata)
+        array_ext_array = storage_array.cast(target_type)
 
         columns["image"] = pa.StructArray.from_arrays(
             [
                 pa.array(band_arrays, type=pa.list_(pa.string())),
                 pa.array(view_arrays, type=pa.list_(pa.string())),
-                pa.array(array_arrays, type=pa.list_(pa.list_(pa.list_(pa.float32())))),
+                array_ext_array,
                 pa.array(scale_arrays, type=pa.list_(pa.float32())),
             ],
             names=["band", "view", "array", "scale"],
