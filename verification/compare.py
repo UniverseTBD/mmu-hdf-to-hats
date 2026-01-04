@@ -176,13 +176,52 @@ def compare_nested_list_column(col1, col2, col_name, col_type):
         col1_compare = col1
         col2_compare = col2
 
-        if hasattr(col_type, "storage_type"):
-            col1_compare = col1.cast(col_type.storage_type)
-        if hasattr(col2.type, "storage_type"):
-            col2_compare = col2.cast(col2.type.storage_type)
+        # Check if the element type (value_type) is an extension type
+        col1_value_type = col_type.value_type
+        col2_value_type = col2.type.value_type
 
+        # Check for type mismatch (one extension, one not)
+        has_ext1 = hasattr(col1_value_type, "storage_type")
+        has_ext2 = hasattr(col2_value_type, "storage_type")
+
+        if has_ext1 != has_ext2:
+            # Type mismatch: one is extension type, other is not
+            return {"": (False, [{
+                "error": "TYPE_MISMATCH",
+                "left_type": str(col1_value_type),
+                "right_type": str(col2_value_type),
+                "message": f"Extension type mismatch: left={col1_value_type}, right={col2_value_type}"
+            }])}
+
+        # If both or neither have extension types, try to compare
+        if has_ext1:
+            # Cast list<extension> to list<storage>
+            storage_type1 = pa.list_(col1_value_type.storage_type)
+            col1_compare = col1.cast(storage_type1)
+        if has_ext2:
+            storage_type2 = pa.list_(col2_value_type.storage_type)
+            col2_compare = col2.cast(storage_type2)
+
+        # Try direct equality first
         if col1_compare.equals(col2_compare):
             return {"": (True, [])}
+
+        # For numeric types, use NaN-aware comparison
+        # Check if the value type is a numeric type that might contain NaN
+        is_float_type = pa.types.is_floating(col1_value_type) or pa.types.is_floating(col2_value_type)
+
+        if is_float_type:
+            # Convert to numpy for NaN-aware comparison
+            try:
+                import numpy as np
+                # Flatten both columns to 1D arrays for comparison
+                arr1_flat = pc.list_flatten(col1_compare).to_numpy()
+                arr2_flat = pc.list_flatten(col2_compare).to_numpy()
+
+                if np.allclose(arr1_flat, arr2_flat, rtol=1e-5, atol=1e-8, equal_nan=True):
+                    return {"": (True, [])}
+            except Exception:
+                pass  # Fall through to Python list comparison
 
         list1 = col1[:5].to_pylist()
         list2 = col2[:5].to_pylist()
@@ -554,7 +593,19 @@ def main(datasets_file, rewritten_file, allowed_mismatch_columns):
         if "samples" in issue and issue["samples"]:
             msg += f" (showing {len(issue['samples'])} sample(s))"
             for sample in issue["samples"]:
-                msg += f"\n    - Index {sample['index']}: Left = {sample['left']}, Right = {sample['right']}"
+                # Handle different sample formats
+                if "error" in sample:
+                    # TYPE_MISMATCH or other error format
+                    msg += f"\n    - {sample.get('message', sample.get('error', 'Unknown error'))}"
+                    if "left_type" in sample and "right_type" in sample:
+                        msg += f"\n      Left type:  {sample['left_type']}"
+                        msg += f"\n      Right type: {sample['right_type']}"
+                elif "index" in sample:
+                    # Standard sample format with index
+                    msg += f"\n    - Index {sample['index']}: Left = {sample['left']}, Right = {sample['right']}"
+                else:
+                    # Fallback for other formats
+                    msg += f"\n    - {sample}"
         print(msg)
     issues_leading_to_failure = [
         issue
