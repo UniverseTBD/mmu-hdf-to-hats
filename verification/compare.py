@@ -119,7 +119,9 @@ def truncate_long_arrays(obj, max_items=5):
     if isinstance(obj, list):
         if len(obj) > max_items:
             # Truncate and add ellipsis marker
-            truncated = [truncate_long_arrays(item, max_items) for item in obj[:max_items]]
+            truncated = [
+                truncate_long_arrays(item, max_items) for item in obj[:max_items]
+            ]
             truncated.append("...")
             return truncated
         else:
@@ -144,26 +146,27 @@ def compare_nested_list_column(col1, col2, col_name, col_type):
         }
         If the column has no struct fields, returns a single key '' with the overall comparison.
     """
+    # if col_name == "image.array":
+    #     breakpoint()
     # If not a list or not a struct, do simple comparison
     if not pa.types.is_list(col_type):
         if col1.equals(col2):
-            return {'': (True, [])}
+            return {"": (True, [])}
 
         list1 = col1[:5].to_pylist()
         list2 = col2[:5].to_pylist()
         mismatch_indices = [
-            i for i in range(min(len(list1), len(list2)))
-            if list1[i] != list2[i]
+            i for i in range(min(len(list1), len(list2))) if list1[i] != list2[i]
         ]
         sample_data = [
             {
                 "index": i,
                 "left": truncate_long_arrays(list1[i]),
-                "right": truncate_long_arrays(list2[i])
+                "right": truncate_long_arrays(list2[i]),
             }
             for i in mismatch_indices[:3]
         ]
-        return {'': (False, sample_data)}
+        return {"": (False, sample_data)}
 
     value_type = col_type.value_type
 
@@ -173,29 +176,28 @@ def compare_nested_list_column(col1, col2, col_name, col_type):
         col1_compare = col1
         col2_compare = col2
 
-        if hasattr(col_type, 'storage_type'):
+        if hasattr(col_type, "storage_type"):
             col1_compare = col1.cast(col_type.storage_type)
-        if hasattr(col2.type, 'storage_type'):
+        if hasattr(col2.type, "storage_type"):
             col2_compare = col2.cast(col2.type.storage_type)
 
         if col1_compare.equals(col2_compare):
-            return {'': (True, [])}
+            return {"": (True, [])}
 
         list1 = col1[:5].to_pylist()
         list2 = col2[:5].to_pylist()
         mismatch_indices = [
-            i for i in range(min(len(list1), len(list2)))
-            if list1[i] != list2[i]
+            i for i in range(min(len(list1), len(list2))) if list1[i] != list2[i]
         ]
         sample_data = [
             {
                 "index": i,
                 "left": truncate_long_arrays(list1[i]),
-                "right": truncate_long_arrays(list2[i])
+                "right": truncate_long_arrays(list2[i]),
             }
             for i in mismatch_indices[:3]
         ]
-        return {'': (False, sample_data)}
+        return {"": (False, sample_data)}
 
     # Compare each struct field separately using PyArrow native ops
     field_results = {}
@@ -216,11 +218,11 @@ def compare_nested_list_column(col1, col2, col_name, col_type):
             type2 = field2.type
 
             # Check if either is an extension type
-            if hasattr(type1, 'storage_type') or hasattr(type2, 'storage_type'):
+            if hasattr(type1, "storage_type") or hasattr(type2, "storage_type"):
                 # Cast both to storage type to compare underlying values
-                if hasattr(type1, 'storage_type'):
+                if hasattr(type1, "storage_type"):
                     field1 = field1.cast(type1.storage_type)
-                if hasattr(type2, 'storage_type'):
+                if hasattr(type2, "storage_type"):
                     field2 = field2.cast(type2.storage_type)
 
             if field1.equals(field2):
@@ -239,7 +241,8 @@ def compare_nested_list_column(col1, col2, col_name, col_type):
 
                 # Find mismatches
                 mismatch_indices = [
-                    i for i in range(min(len(field1_slice), len(field2_slice)))
+                    i
+                    for i in range(min(len(field1_slice), len(field2_slice)))
                     if field1_slice[i] != field2_slice[i]
                 ]
 
@@ -247,7 +250,7 @@ def compare_nested_list_column(col1, col2, col_name, col_type):
                     {
                         "index": i,
                         "left": truncate_long_arrays(field1_slice[i]),
-                        "right": truncate_long_arrays(field2_slice[i])
+                        "right": truncate_long_arrays(field2_slice[i]),
                     }
                     for i in mismatch_indices[:3]
                 ]
@@ -283,7 +286,11 @@ def columns_equal_or_samples(
 
 
 def compare_tables(
-    datasets_table, rewritten_table, label1="Table 1", label2="Table 2", mismatch_number=3
+    datasets_table,
+    rewritten_table,
+    label1="Table 1",
+    label2="Table 2",
+    mismatch_number=3,
 ):
     """Compare two PyArrow tables and report all differences."""
     # general comparison report
@@ -321,8 +328,12 @@ def compare_tables(
     print(f"\n{'=' * 70}")
     print(f"COMPARISON SUMMARY")
     print(f"{'=' * 70}")
-    print(f"{label1}: {datasets_table.num_rows} rows, {datasets_table.num_columns} columns")
-    print(f"{label2}: {rewritten_table.num_rows} rows, {rewritten_table.num_columns} columns")
+    print(
+        f"{label1}: {datasets_table.num_rows} rows, {datasets_table.num_columns} columns"
+    )
+    print(
+        f"{label2}: {rewritten_table.num_rows} rows, {rewritten_table.num_columns} columns"
+    )
 
     # Check row counts
     if datasets_table.num_rows != rewritten_table.num_rows:
@@ -410,10 +421,15 @@ def compare_tables(
                     )
 
                     # Report each mismatched field separately
-                    for field_name, (field_equal, field_samples) in field_results.items():
+                    for field_name, (
+                        field_equal,
+                        field_samples,
+                    ) in field_results.items():
                         if not field_equal:
                             # Create full field path (e.g., "lightcurve.group")
-                            full_field_name = f"{col_name}.{field_name}" if field_name else col_name
+                            full_field_name = (
+                                f"{col_name}.{field_name}" if field_name else col_name
+                            )
 
                             issues.append(
                                 {
@@ -454,7 +470,7 @@ def compare_tables(
                                 {
                                     "index": i,
                                     "left": truncate_long_arrays(list1[i]),
-                                    "right": truncate_long_arrays(list2[i])
+                                    "right": truncate_long_arrays(list2[i]),
                                 }
                                 for i in mismatch_indices[:3]
                             ]
@@ -477,7 +493,7 @@ def compare_tables(
                             {
                                 "index": i,
                                 "left": truncate_long_arrays(arr1[i]),
-                                "right": truncate_long_arrays(arr2[i])
+                                "right": truncate_long_arrays(arr2[i]),
                             }
                             for i in mismatch_indices[:mismatch_number]
                         ]
@@ -524,7 +540,9 @@ def main(datasets_file, rewritten_file, allowed_mismatch_columns):
     click.echo("Flattening struct columns...")
 
     # Compare tables and show full report
-    issues = compare_tables(datasets_table, rewritten_table, label1=datasets_file, label2=rewritten_file)
+    issues = compare_tables(
+        datasets_table, rewritten_table, label1=datasets_file, label2=rewritten_file
+    )
 
     # Print final report
     print(f"\n{'=' * 70}")
