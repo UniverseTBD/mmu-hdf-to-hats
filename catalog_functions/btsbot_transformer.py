@@ -158,17 +158,10 @@ class BTSbotTransformer(BaseTransformer):
         )
         scale_data = data["image_scale"][:]
 
-        band_arrays = [
-            [band_data[i] for i in range(len(self.VIEWS))] for _ in range(n_objects)
-        ]
+        band_arrays = [[band_data[i], band_data[i], band_data[i]] for i in range(n_objects)]
         view_arrays = [self.VIEWS for _ in range(n_objects)]
-        array_arrays = [
-            [[row.tolist() for row in image_triplet[i, :, :, j]] for j in range(3)]
-            for i in range(n_objects)
-        ]
-        scale_arrays = [
-            [float(scale_data[i]) for _j in range(3)] for i in range(n_objects)
-        ]
+        array_arrays = [[[row.tolist() for row in image_triplet[i, :, :, j]] for j in range(3)] for i in range(n_objects)]
+        scale_arrays = [[float(scale_data[i]), float(scale_data[i]), float(scale_data[i])] for i in range(n_objects)]
 
         columns["image"] = pa.StructArray.from_arrays(
             [
