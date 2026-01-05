@@ -4,7 +4,7 @@ import pyarrow.parquet as pq
 from catalog_functions.btsbot_transformer import BTSbotTransformer
 
 # Example usage
-input_file = "../../MultimodalUniverse/v1/btsbot/data/healpix=0313/"
+input_file = "data/MultimodalUniverse/v1/btsbot/data/healpix=0313/001-of-001.hdf5"
 output_file = "data/btsbot_hp0313_transformed.parquet"
 
 print("Transforming HDF5 to Arrow table...")
