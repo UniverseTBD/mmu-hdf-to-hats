@@ -54,6 +54,7 @@ catalog_data = {
     "legacysurvey": {
         "original-mmu": "data/MultimodalUniverse/v1/legacysurvey_with_coordinates/",
         "rewritten": "data/legacysurvey_hp1981_transformed.parquet",
+    },
     "gz10": {
         "original-mmu": "data/MultimodalUniverse/v1/gz10_with_coordinates/",
         "rewritten": "data/gz10_hp513_transformed.parquet",
@@ -89,7 +90,7 @@ catalog_data = {
     "yse": {
         "original-mmu": "data/MultimodalUniverse/v1/yse_with_coordinates/",
         "rewritten": "data/yse_hp584_transformed.parquet",
-    }
+    },
 }
 
 
