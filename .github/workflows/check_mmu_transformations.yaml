@@ -54,10 +54,19 @@ jobs:
         catalog:
           - btsbot
           - desi
+          - des_y3_sne_ia
+          - foundation
           - gaia
+          - gz10
+          - hsc
           - sdss
+          - snls
+          - ps1_sne_ia
+          - tess
           - vipers
           - legacysurvey
+          - swift_sne_ia
+          - yse
           # todo: add more catalogs here once they're ready
     steps:
       - uses: actions/checkout@v4

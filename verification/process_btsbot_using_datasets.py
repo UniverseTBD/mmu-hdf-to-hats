@@ -3,7 +3,7 @@
 # uv pip install -r requirements.txt
 # ./download_btsbot.sh
 from datasets import load_dataset_builder, concatenate_datasets
-from mmu.utils import get_catalog
+from utils import get_catalog
 from astropy.table import vstack
 
 # Load the dataset descriptions from local copy of the data
