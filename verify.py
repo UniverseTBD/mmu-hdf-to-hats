@@ -89,7 +89,7 @@ catalog_data = {
     "yse": {
         "original-mmu": "data/MultimodalUniverse/v1/yse_with_coordinates/",
         "rewritten": "data/yse_hp584_transformed.parquet",
-    },
+    }
 }
 
 
