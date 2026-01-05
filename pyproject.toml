@@ -14,7 +14,6 @@ dependencies = [
     "universal_pathlib",
     "click",
     "datasets",
-    "mmu",
 ]
 
 # add dev dependencies
