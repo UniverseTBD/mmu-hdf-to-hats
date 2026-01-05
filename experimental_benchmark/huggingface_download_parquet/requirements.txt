@@ -1,0 +1,2 @@
+pyarrow
+huggingface_hub
