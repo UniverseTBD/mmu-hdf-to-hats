@@ -39,13 +39,37 @@ catalog_data = {
         "original-mmu": "data/MultimodalUniverse/v1/desi_with_coordinates/",
         "rewritten": "data/desi_hp626_transformed.parquet",
     },
+    "des_y3_sne_ia": {
+        "original-mmu": "data/MultimodalUniverse/v1/des_y3_sne_ia_with_coordinates/",
+        "rewritten": "data/des_y3_sne_ia_hp1105_transformed.parquet",
+    },
+    "foundation": {
+        "original-mmu": "data/MultimodalUniverse/v1/foundation_with_coordinates/",
+        "rewritten": "data/foundation_hp1628_transformed.parquet",
+    },
     "gaia": {
         "original-mmu": "data/MultimodalUniverse/v1/gaia_with_coordinates/",
         "rewritten": "data/gaia_hp1631_transformed.parquet",
     },
+    "gz10": {
+        "original-mmu": "data/MultimodalUniverse/v1/gz10_with_coordinates/",
+        "rewritten": "data/gz10_hp513_transformed.parquet",
+    },
+    "hsc": {
+        "original-mmu": "data/MultimodalUniverse/v1/hsc_with_coordinates/",
+        "rewritten": "data/hsc_hp1106_transformed.parquet",
+    },
     "sdss": {
         "original-mmu": "data/MultimodalUniverse/v1/sdss_with_coordinates/",
         "rewritten": "data/sdss_hp583_transformed.parquet",
+    },
+    "snls": {
+        "original-mmu": "data/MultimodalUniverse/v1/snls_with_coordinates/",
+        "rewritten": "data/snls_hp0714_transformed.parquet",
+    },
+    "ps1_sne_ia": {
+        "original-mmu": "data/MultimodalUniverse/v1/ps1_sne_ia_with_coordinates/",
+        "rewritten": "data/ps1_sne_ia_hp1105_transformed.parquet",
     },
     "tess": {
         "original-mmu": "data/MultimodalUniverse/v1/tess_with_coordinates/",
@@ -54,6 +78,14 @@ catalog_data = {
     "vipers": {
         "original-mmu": "data/MultimodalUniverse/v1/vipers_with_coordinates/",
         "rewritten": "data/vipers_hp1107_transformed.parquet",
+    },
+    "swift_sne_ia": {
+        "original-mmu": "data/MultimodalUniverse/v1/swift_sne_ia_with_coordinates/",
+        "rewritten": "data/swift_sne_ia_hp2158_transformed.parquet",
+    },
+    "yse": {
+        "original-mmu": "data/MultimodalUniverse/v1/yse_with_coordinates/",
+        "rewritten": "data/yse_hp584_transformed.parquet",
     },
 }
 
@@ -110,7 +142,7 @@ def run_single_catalog(catalog_name: str):
 
     # Step 3: Compare files
     click.echo(f"\nStep 3: Comparing {catalog_name} files...")
-    compare_command = f"python verification/compare.py {catalog_data[catalog_name]['original-mmu']} {catalog_data[catalog_name]['rewritten']}"
+    compare_command = f"python verification/compare.py --datasets-file {catalog_data[catalog_name]['original-mmu']} --rewritten-file {catalog_data[catalog_name]['rewritten']}"
     if "allowed-mismatch-columns" in catalog_data[catalog_name]:
         compare_command += f" --allowed-mismatch-columns {catalog_data[catalog_name]['allowed-mismatch-columns']}"
     result = subprocess.run(

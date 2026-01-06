@@ -3,7 +3,7 @@
 # uv pip install -r requirements.txt
 # ./download_sdss_hsc.sh
 from datasets import load_dataset_builder, concatenate_datasets
-from mmu.utils import get_catalog
+from utils import get_catalog
 
 # Load the dataset descriptions from local copy of the data
 sdss = load_dataset_builder("data/MultimodalUniverse/v1/sdss", trust_remote_code=True)

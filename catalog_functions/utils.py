@@ -42,7 +42,11 @@ class BaseTransformer(ABC):
         with h5py.File(hdf5_file_path, "r") as data:
             return self.dataset_to_table(data)
 
-    def _check_if_directory(self, path: Union[str, Path, "UPath"]) -> bool:
+    def _check_if_directory(
+        self, path: List[Union[str, Path, "UPath"]] | Union[str, Path, "UPath"]
+    ) -> bool:
+        if isinstance(path, list):
+            return False
         p = UPath(path)
         return p.is_dir()
 
@@ -54,7 +58,9 @@ class BaseTransformer(ABC):
         if self._check_if_directory(hdf5_file_path):
             # list all files in the dir
             suffixes = {".h5", ".hdf5"}
-            hdf5_file_path = sorted(p for p in UPath(hdf5_file_path).glob("*.h*5") if p.suffix in suffixes)
+            hdf5_file_path = sorted(
+                p for p in UPath(hdf5_file_path).glob("*.h*5") if p.suffix in suffixes
+            )
         if isinstance(hdf5_file_path, (str, Path, UPath)):
             return self.transform_from_hdf5_file(hdf5_file_path)
         elif isinstance(hdf5_file_path, list):
