@@ -254,27 +254,24 @@ def compare_tables(
 
 
 @click.command()
-@click.argument("file1", type=click.Path(exists=True))
-@click.argument("file2", type=click.Path(exists=True))
+@click.option("--datasets-file", type=click.Path(exists=True))
+@click.option("--rewritten-file", type=click.Path(exists=True))
 @click.option("--allowed-mismatch-columns", type=str, default="",
               help="Comma-separated list of columns where value mismatches are allowed")
 @click.option("--ignore-missing-columns", type=str, default="",
               help="Comma-separated list of columns to ignore if missing from either table")
 @click.option("--forbidden-columns", type=str, default="",
               help="Comma-separated list of columns that must NOT exist (e.g., healpix)")
-def main(file1, file2, allowed_mismatch_columns, ignore_missing_columns, forbidden_columns):
+def main(datasets_file, rewritten_file, allowed_mismatch_columns, ignore_missing_columns, forbidden_columns):
     """Compare two PyArrow tables from parquet files or datasets directories.
 
     Examples:
 
       # Compare a transformed parquet with a datasets directory
-      python compare.py data/transformed.parquet data/datasets_output
+      python compare.py --datasets-file data/datasets_output --rewritten-file data/transformed.parquet
 
       # Compare two parquet files
-      python compare.py output1.parquet output2.parquet
-
-      # Compare two datasets directories
-      python compare.py data/dataset1 data/dataset2
+      python compare.py --datasets-file output1.parquet --rewritten-file output2.parquet
     """
     # Parse options FIRST
     allowed_mismatch_set = set(c.strip() for c in allowed_mismatch_columns.split(",") if c.strip())
@@ -282,17 +279,17 @@ def main(file1, file2, allowed_mismatch_columns, ignore_missing_columns, forbidd
     forbidden_set = set(c.strip() for c in forbidden_columns.split(",") if c.strip())
 
     # Load both tables
-    click.echo(f"Loading first table from: {file1}")
-    table1 = load_table(file1)
+    click.echo(f"Loading datasets file from: {datasets_file}")
+    table1 = load_table(datasets_file)
 
-    click.echo(f"Loading second table from: {file2}")
-    table2 = load_table(file2)
+    click.echo(f"Loading rewritten file from: {rewritten_file}")
+    table2 = load_table(rewritten_file)
 
     # Flatten struct columns for comparison
     click.echo("Flattening struct columns...")
 
     # Compare tables
-    issues = compare_tables(table1, table2, label1=file1, label2=file2)
+    issues = compare_tables(table1, table2, label1=datasets_file, label2=rewritten_file)
 
     # Check for forbidden columns - add as issue
     if forbidden_set:
