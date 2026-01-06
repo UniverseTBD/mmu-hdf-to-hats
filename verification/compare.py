@@ -308,55 +308,95 @@ def compare_tables(
 @click.command()
 @click.option("--datasets-file", type=click.Path(exists=True))
 @click.option("--rewritten-file", type=click.Path(exists=True))
-@click.option("--allowed-mismatch-columns", type=str, default="")
-def main(datasets_file, rewritten_file, allowed_mismatch_columns):
+@click.option("--allowed-mismatch-columns", type=str, default="",
+              help="Comma-separated list of columns where value mismatches are allowed")
+@click.option("--ignore-missing-columns", type=str, default="",
+              help="Comma-separated list of columns to ignore if missing from either table")
+@click.option("--forbidden-columns", type=str, default="",
+              help="Comma-separated list of columns that must NOT exist (e.g., healpix)")
+def main(datasets_file, rewritten_file, allowed_mismatch_columns, ignore_missing_columns, forbidden_columns):
     """Compare two PyArrow tables from parquet files or datasets directories.
 
     Examples:
 
       # Compare a transformed parquet with a datasets directory
-      python compare.py data/transformed.parquet data/datasets_output
+      python compare.py --datasets-file data/datasets_output --rewritten-file data/transformed.parquet
 
       # Compare two parquet files
-      python compare.py output1.parquet output2.parquet
-
-      # Compare two datasets directories
-      python compare.py data/dataset1 data/dataset2
+      python compare.py --datasets-file output1.parquet --rewritten-file output2.parquet
     """
+    # Parse options FIRST
+    allowed_mismatch_set = set(c.strip() for c in allowed_mismatch_columns.split(",") if c.strip())
+    ignore_missing_set = set(c.strip() for c in ignore_missing_columns.split(",") if c.strip())
+    forbidden_set = set(c.strip() for c in forbidden_columns.split(",") if c.strip())
+
     # Load both tables
-    click.echo(f"Loading first table from: {datasets_file}")
+    click.echo(f"Loading datasets file from: {datasets_file}")
     datasets_table = load_table(datasets_file)
 
-    click.echo(f"Loading second table from: {rewritten_file}")
+    click.echo(f"Loading rewritten file from: {rewritten_file}")
     rewritten_table = load_table(rewritten_file)
 
     # Flatten struct columns for comparison
     click.echo("Flattening struct columns...")
 
-    # Compare tables and show full report
+    # Compare tables
     issues = compare_tables(datasets_table, rewritten_table, label1=datasets_file, label2=rewritten_file)
+
+    # Check for forbidden columns - add as issue
+    if forbidden_set:
+        fields1 = get_all_field_names(datasets_table.schema)
+        fields2 = get_all_field_names(rewritten_table.schema)
+        found_forbidden = (fields1 | fields2) & forbidden_set
+        if found_forbidden:
+            issues.append({
+                "type": "forbidden_columns",
+                "column": None,
+                "message": f"Found forbidden columns: {sorted(found_forbidden)}",
+                "samples": [],
+                "table": None,
+            })
+
+    # Categorize issues
+    issues_to_fail = []
+    issues_allowed = []
+    
+    for issue in issues:
+        # Check if this issue is allowed
+        if issue["column"] in allowed_mismatch_set:
+            issues_allowed.append(issue)
+        elif issue["type"] == "schema" and ignore_missing_set:
+            # Check if all missing columns in this schema issue are ignored
+            issues_allowed.append(issue)
+        else:
+            issues_to_fail.append(issue)
 
     # Print final report
     print(f"\n{'=' * 70}")
     print(f"FINAL REPORT")
     print(f"{'=' * 70}")
 
-    for idx, issue in enumerate(issues, 1):
+    # Print failure issues first
+    for idx, issue in enumerate(issues_to_fail, 1):
         msg = f"{idx}. [{issue['type'].upper()}] {issue['message']}"
         if "samples" in issue and issue["samples"]:
             msg += f" (showing {len(issue['samples'])} sample(s))"
             for sample in issue["samples"]:
                 msg += f"\n    - Index {sample['index']}: Left = {sample['left']}, Right = {sample['right']}"
         print(msg)
-    issues_leading_to_failure = [
-        issue
-        for issue in issues
-        if issue["column"] not in allowed_mismatch_columns.split(",")
-    ]
-    if len(issues_leading_to_failure) > 0:
+
+    # Print allowed issues with annotation
+    if issues_allowed:
+        print(f"\n--- Allowed/Ignored Issues ---")
+        for idx, issue in enumerate(issues_allowed, 1):
+            msg = f"[ALLOWED] {idx}. [{issue['type'].upper()}] {issue['message']}"
+            print(msg)
+
+    if len(issues_to_fail) > 0:
         exit(1)
     exit(0)
 
 
 if __name__ == "__main__":
     main()
+
