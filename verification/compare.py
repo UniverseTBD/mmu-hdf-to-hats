@@ -4,6 +4,15 @@ from datasets import load_from_disk
 import click
 from pathlib import Path
 import numpy as np
+from typing import TypedDict
+
+
+class ComparisonIssue(TypedDict):
+    type: str
+    message: str
+    column: str | None
+    samples: list | None
+    table: str | None
 
 
 def get_all_field_names(schema, prefix=""):
@@ -59,6 +68,41 @@ def load_table(file_path):
     raise ValueError(f"Unsupported file type or format: {file_path}")
 
 
+def check_for_col(table, col_name, table_name) -> list[ComparisonIssue]:
+    col = next(
+        (col for col in table.column_names if col.lower() == col_name.lower()), None
+    )
+    if col is None:
+        return [
+            {
+                "type": "missing_column",
+                "message": f"Column '{col_name}' not found",
+                "column": col_name,
+                "samples": None,
+                "table": table_name,
+            }
+        ]
+    col_type = table.schema.field(col).type
+    # check if type is double, not float32
+    if pa.types.is_float64(col_type):
+        return []
+    return [
+        {
+            "type": "column_type_mismatch",
+            "message": f"Column '{col}' is of type {col_type}, expected float64",
+            "column": col,
+            "samples": None,
+            "table": table_name,
+        }
+    ]
+
+
+# Check for columns 'ra' and 'dec' case insensitive and make sure they are of type double
+def check_for_coordinate_cols(table, table_name) -> list[ComparisonIssue]:
+    ra_issues = check_for_col(table, "ra", table_name)
+    dec_issues = check_for_col(table, "dec", table_name)
+    return ra_issues + dec_issues
+
 def columns_equal_or_samples(
     arr1: np.ndarray, arr2: np.ndarray
 ) -> tuple[bool, list[tuple[int, any, any]]]:
@@ -81,7 +125,7 @@ def columns_equal_or_samples(
 
 
 def compare_tables(
-    table1, table2, label1="Table 1", label2="Table 2", mismatch_number=3
+    datasets_table, rewritten_table, label1="Table 1", label2="Table 2", mismatch_number=3
 ):
     """Compare two PyArrow tables and report all differences."""
     # general comparison report
@@ -89,8 +133,8 @@ def compare_tables(
     sample_data = []
     # we'll ignore the column types in the schema comparison, since datasets can make some optimizations, e.g.
     # list<item: extension<datasets.features.features.Array2DExtensionType<Array2DExtensionType>>>
-    fields1 = get_all_field_names(table1.schema)
-    fields2 = get_all_field_names(table2.schema)
+    fields1 = get_all_field_names(datasets_table.schema)
+    fields2 = get_all_field_names(rewritten_table.schema)
 
     fields_only_in1 = fields1 - fields2
     fields_only_in2 = fields2 - fields1
@@ -113,28 +157,32 @@ def compare_tables(
                 "samples": [],
             }
         )
-    table1 = flatten_struct_columns(table1)
-    table2 = flatten_struct_columns(table2)
+    datasets_table = flatten_struct_columns(datasets_table)
+    rewritten_table = flatten_struct_columns(rewritten_table)
 
     print(f"\n{'=' * 70}")
     print(f"COMPARISON SUMMARY")
     print(f"{'=' * 70}")
-    print(f"{label1}: {table1.num_rows} rows, {table1.num_columns} columns")
-    print(f"{label2}: {table2.num_rows} rows, {table2.num_columns} columns")
+    print(f"{label1}: {datasets_table.num_rows} rows, {datasets_table.num_columns} columns")
+    print(f"{label2}: {rewritten_table.num_rows} rows, {rewritten_table.num_columns} columns")
 
     # Check row counts
-    if table1.num_rows != table2.num_rows:
+    if datasets_table.num_rows != rewritten_table.num_rows:
         issues.append(
             {
                 "type": "row_count",
                 "column": None,
-                "message": f"Row count mismatch: {label1} has {table1.num_rows} rows, {label2} has {table2.num_rows} rows",
+                "message": f"Row count mismatch: {label1} has {datasets_table.num_rows} rows, {label2} has {rewritten_table.num_rows} rows",
             }
         )
+        # we cannot really compare more if row counts differ
+        return issues
+    # we only check for ra/dec columns in the rewritten table to ensure are of correct type
+    issues += check_for_coordinate_cols(rewritten_table, label2)
 
     # Check columns
-    cols1 = set(table1.column_names)
-    cols2 = set(table2.column_names)
+    cols1 = set(datasets_table.column_names)
+    cols2 = set(rewritten_table.column_names)
 
     cols_only_in_1 = cols1 - cols2
     cols_only_in_2 = cols2 - cols1
@@ -146,6 +194,7 @@ def compare_tables(
                 "type": "columns",
                 "column": None,
                 "message": f"{label1} has additional columns: {sorted(cols_only_in_1)}",
+                "table": label1,
             }
         )
 
@@ -155,11 +204,12 @@ def compare_tables(
                 "type": "columns",
                 "column": None,
                 "message": f"{label2} has additional columns: {sorted(cols_only_in_2)}",
+                "table": label2,
             }
         )
 
     # Compare common columns (only if both tables have rows)
-    if common_cols and table1.num_rows > 0 and table2.num_rows > 0:
+    if common_cols and datasets_table.num_rows > 0 and rewritten_table.num_rows > 0:
         # Find a sortable column for comparison - prefer object_id for stability
         sort_column = None
         preferred_sort_cols = ["object_id", "source_id", "id"]
@@ -169,7 +219,7 @@ def compare_tables(
                 break
         if sort_column is None:
             for col_name in sorted(common_cols):
-                col_type = table1.schema.field(col_name).type
+                col_type = datasets_table.schema.field(col_name).type
                 if not pa.types.is_nested(col_type):
                     sort_column = col_name
                     break
@@ -180,19 +230,20 @@ def compare_tables(
                     "type": "sorting",
                     "column": None,
                     "message": "No sortable column found in common columns - cannot compare row-by-row",
+                    "table": None,
                 }
             )
         else:
             print(f"\nSorting by column: {sort_column}")
-            table1_sorted = table1.sort_by(sort_column)
-            table2_sorted = table2.sort_by(sort_column)
+            datasets_table_sorted = datasets_table.sort_by(sort_column)
+            rewritten_table_sorted = rewritten_table.sort_by(sort_column)
 
             print(f"\nComparing {len(common_cols)} common columns...")
             for col_name in sorted(common_cols):
-                col1 = table1_sorted[col_name]
-                col2 = table2_sorted[col_name]
+                col1 = datasets_table_sorted[col_name]
+                col2 = rewritten_table_sorted[col_name]
 
-                col_type = table1_sorted.schema.field(col_name).type
+                col_type = datasets_table_sorted.schema.field(col_name).type
                 # Structs are flattened, but list columns remain nested
                 if pa.types.is_nested(col_type):
                     list1 = col1.combine_chunks().to_pylist()
@@ -248,6 +299,7 @@ def compare_tables(
                             "message": f"Column '{col_name}' has differences",
                             "column": col_name,
                             "samples": sample_data,
+                            "table": None,
                         }
                     )
     return issues
@@ -280,21 +332,21 @@ def main(datasets_file, rewritten_file, allowed_mismatch_columns, ignore_missing
 
     # Load both tables
     click.echo(f"Loading datasets file from: {datasets_file}")
-    table1 = load_table(datasets_file)
+    datasets_table = load_table(datasets_file)
 
     click.echo(f"Loading rewritten file from: {rewritten_file}")
-    table2 = load_table(rewritten_file)
+    rewritten_table = load_table(rewritten_file)
 
     # Flatten struct columns for comparison
     click.echo("Flattening struct columns...")
 
     # Compare tables
-    issues = compare_tables(table1, table2, label1=datasets_file, label2=rewritten_file)
+    issues = compare_tables(datasets_table, rewritten_table, label1=datasets_file, label2=rewritten_file)
 
     # Check for forbidden columns - add as issue
     if forbidden_set:
-        fields1 = get_all_field_names(table1.schema)
-        fields2 = get_all_field_names(table2.schema)
+        fields1 = get_all_field_names(datasets_table.schema)
+        fields2 = get_all_field_names(rewritten_table.schema)
         found_forbidden = (fields1 | fields2) & forbidden_set
         if found_forbidden:
             issues.append({
@@ -302,6 +354,7 @@ def main(datasets_file, rewritten_file, allowed_mismatch_columns, ignore_missing
                 "column": None,
                 "message": f"Found forbidden columns: {sorted(found_forbidden)}",
                 "samples": [],
+                "table": None,
             })
 
     # Categorize issues

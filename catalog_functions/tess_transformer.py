@@ -29,7 +29,7 @@ class TESSTransformer(BaseTransformer):
 
         # Add all float features
         for f in self.FLOAT_FEATURES:
-            fields.append(pa.field(f, pa.float32()))
+            fields.append(pa.field(f, pa.float64()))
 
         # Object ID
         fields.append(pa.field("object_id", pa.string()))
