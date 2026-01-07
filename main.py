@@ -206,7 +206,7 @@ def main(argv=None):
 
     row_group_kwargs = {}
     if cmd_args.row_group_size is not None:
-        row_group_kwargs['row_group_size'] = cmd_args.row_group_size
+        row_group_kwargs['num_rows'] = cmd_args.row_group_size
 
     import_args = (
         CollectionArguments(
