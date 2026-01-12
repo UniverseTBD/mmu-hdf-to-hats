@@ -167,7 +167,6 @@ class Gaia(datasets.GeneratorBasedBuilder):
             "flags": {f: Value(dtype="float32") for f in _FLAG_FEATURES},
             "corrections": {f: Value(dtype="float32") for f in _CORRECTION_FEATURES},
             "object_id": Value(dtype="int64"),
-            "healpix": Value(dtype="int64"),
             "ra": Value(dtype="float32"),
             "dec": Value(dtype="float32"),
         }
@@ -219,7 +218,6 @@ class Gaia(datasets.GeneratorBasedBuilder):
                         "flags": {f: data[f][i] for f in _FLAG_FEATURES},
                         "corrections": {f: data[f][i] for f in _CORRECTION_FEATURES},
                         "object_id": s_id,
-                        "healpix": data["healpix"][i],
                         "ra": data["ra"][i],
                         "dec": data["dec"][i],
                     }

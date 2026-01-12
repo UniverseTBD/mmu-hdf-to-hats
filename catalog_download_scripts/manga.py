@@ -224,7 +224,6 @@ class MaNGA(datasets.GeneratorBasedBuilder):
                         "object_id": objid,
                         "ra": grp["ra"][()],
                         "dec": grp["dec"][()],
-                        "healpix": grp["healpix"][()],
                         "z": grp["z"][()],
                         "spaxel_size": grp["spaxel_size"][()],
                         "spaxel_size_units": grp["spaxel_size_unit"].asstr()[()],
