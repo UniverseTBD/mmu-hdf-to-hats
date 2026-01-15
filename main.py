@@ -103,6 +103,12 @@ def parse_args(argv):
         action="store_true",
         help="Enable debug mode (single worker, single thread, no separate processes)",
     )
+    parser.add_argument(
+        "--row-group-size",
+        default=None,
+        type=int,
+        help="Row group size for parquet files. If not specified, uses PyArrow's default (min of table size and 1M rows). For image data, try 50-250.",
+    )
     return parser.parse_args(argv)
 
 
@@ -198,6 +204,10 @@ def main(argv=None):
     if cmd_args.first_n is not None:
         input_files = input_files[: cmd_args.first_n]
 
+    row_group_kwargs = {}
+    if cmd_args.row_group_size is not None:
+        row_group_kwargs['num_rows'] = cmd_args.row_group_size
+
     import_args = (
         CollectionArguments(
             output_artifact_name=cmd_args.name,
@@ -211,6 +221,7 @@ def main(argv=None):
             dec_column=cmd_args.dec,
             pixel_threshold=cmd_args.max_rows,
             lowest_healpix_order=4,
+            row_group_kwargs=row_group_kwargs,
         )
         .add_margin(margin_threshold=10.0, is_default=True)
     )
@@ -224,7 +235,7 @@ def main(argv=None):
         )
     else:
         # Production mode: use multiple workers
-        client_kwargs = {"n_workers": min(8, cpu_count()), "threads_per_worker": 1}
+        client_kwargs = {"n_workers": min(8, cpu_count()), "threads_per_worker": 1, "memory_limit": "48G"}
         LOGGER.info(
             f"Running in PRODUCTION mode ({client_kwargs['n_workers']} workers)"
         )
