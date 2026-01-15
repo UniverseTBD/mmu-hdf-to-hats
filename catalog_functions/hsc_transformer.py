@@ -5,6 +5,7 @@ HSCTransformer: Clean class-based transformation from HDF5 to PyArrow tables.
 import pyarrow as pa
 import numpy as np
 from catalog_functions.utils import BaseTransformer
+from datasets.features.features import Array2DExtensionType
 
 
 class HSCTransformer(BaseTransformer):
@@ -73,13 +74,17 @@ class HSCTransformer(BaseTransformer):
         """Create the output PyArrow schema."""
         fields = []
 
+        # Create Array2D extension types for image data
+        array_2d_float = Array2DExtensionType(shape=(self.IMAGE_SIZE, self.IMAGE_SIZE), dtype='float32')
+        array_2d_bool = Array2DExtensionType(shape=(self.IMAGE_SIZE, self.IMAGE_SIZE), dtype='bool')
+
         # Image struct with lists of band data (matching datasets library output)
         image_struct = pa.struct(
             [
                 pa.field("band", pa.list_(pa.string())),
-                pa.field("flux", pa.list_(pa.list_(pa.list_(pa.float32())))),  # List of 2D arrays
-                pa.field("ivar", pa.list_(pa.list_(pa.list_(pa.float32())))),  # List of 2D arrays
-                pa.field("mask", pa.list_(pa.list_(pa.list_(pa.bool_())))),  # List of 2D arrays
+                pa.field("flux", pa.list_(array_2d_float)),  # List of Array2D extension types
+                pa.field("ivar", pa.list_(array_2d_float)),  # List of Array2D extension types
+                pa.field("mask", pa.list_(array_2d_bool)),   # List of Array2D extension types
                 pa.field("psf_fwhm", pa.list_(pa.float32())),
                 pa.field("scale", pa.list_(pa.float32())),
             ]
@@ -135,10 +140,10 @@ class HSCTransformer(BaseTransformer):
         band_arrays = pa.array([band_names_decoded] * n_objects, type=pa.list_(pa.string()))
 
         # For 2D image data (flux, ivar, mask): reshape and convert efficiently
-        # Shape: (n_objects, n_bands, 160, 160) -> need list[list[list[float]]]
+        # Shape: (n_objects, n_bands, 160, 160) -> need list[Array2D]
         # Convert only the 2D arrays to list-of-rows (keeping rows as numpy arrays)
-        def build_nested_image_array(img_data, pa_type):
-            """Build nested list array from 4D numpy array.
+        def build_nested_image_array_with_extension(img_data, extension_type):
+            """Build nested list array from 4D numpy array with Array2D extension type.
 
             Converts 2D arrays (160x160) to list of numpy 1D arrays (160 rows).
             This avoids converting individual pixels to Python scalars.
@@ -151,11 +156,21 @@ class HSCTransformer(BaseTransformer):
                     # Split 2D array into list of row arrays (no pixel-level copy)
                     obj_bands.append([row for row in img_data[i, j]])
                 result.append(obj_bands)
-            return pa.array(result, type=pa.list_(pa.list_(pa.list_(pa_type))))
 
-        flux_arrays = build_nested_image_array(image_array, pa.float32())
-        ivar_arrays = build_nested_image_array(image_ivar, pa.float32())
-        mask_arrays = build_nested_image_array(image_mask, pa.bool_())
+            # Create storage array first
+            storage_type = pa.list_(extension_type.storage_type)
+            storage_array = pa.array(result, type=storage_type)
+
+            # Cast to extension type
+            target_type = pa.list_(extension_type)
+            return storage_array.cast(target_type)
+
+        array_2d_float = Array2DExtensionType(shape=(self.IMAGE_SIZE, self.IMAGE_SIZE), dtype='float32')
+        array_2d_bool = Array2DExtensionType(shape=(self.IMAGE_SIZE, self.IMAGE_SIZE), dtype='bool')
+
+        flux_arrays = build_nested_image_array_with_extension(image_array, array_2d_float)
+        ivar_arrays = build_nested_image_array_with_extension(image_ivar, array_2d_float)
+        mask_arrays = build_nested_image_array_with_extension(image_mask, array_2d_bool)
 
         # For scalar lists (psf_fwhm, scale): each row is a list of 5 values
         # Convert 2D array (n_objects, 5) to list of 1D arrays
