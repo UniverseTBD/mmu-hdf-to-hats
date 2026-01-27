@@ -2,6 +2,7 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 from datasets import load_from_disk
+import warnings
 import click
 from pathlib import Path
 import numpy as np
@@ -14,6 +15,21 @@ class ComparisonIssue(TypedDict):
     column: str | None
     samples: list | None
     table: str | None
+
+
+def normalize_coordinate_columns(table, table_name):
+    """Rename RA->ra and DEC->dec if present, for case-insensitive comparison."""
+    names = table.column_names
+    for old, new in [("RA", "ra"), ("DEC", "dec")]:
+        if old in names and new not in names:
+            warnings.warn(
+                f"Renaming column '{old}' to '{new}' in {table_name} for comparison"
+            )
+            idx = names.index(old)
+            field = table.schema.field(idx).with_name(new)
+            table = table.set_column(idx, field, table.column(idx))
+            names = table.column_names
+    return table
 
 
 def get_all_field_names(schema, prefix=""):
@@ -335,6 +351,9 @@ def compare_tables(
     # general comparison report
     issues = []
     sample_data = []
+
+    datasets_table = normalize_coordinate_columns(datasets_table, label1)
+    rewritten_table = normalize_coordinate_columns(rewritten_table, label2)
     # we'll ignore the column types in the schema comparison, since datasets can make some optimizations, e.g.
     # list<item: extension<datasets.features.features.Array2DExtensionType<Array2DExtensionType>>>
     fields1 = get_all_field_names(datasets_table.schema)
@@ -361,6 +380,7 @@ def compare_tables(
                 "samples": [],
             }
         )
+
     datasets_table = flatten_struct_columns(datasets_table)
     rewritten_table = flatten_struct_columns(rewritten_table)
 

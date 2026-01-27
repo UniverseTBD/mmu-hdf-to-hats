@@ -133,11 +133,23 @@ class MMUReader(InputReader):
         self.chunk_bytes = chunk_mb * 1024 * 1024
         self.transform = transform_klass()
 
+    def _get_h5_column(self, h5_file, col_name):
+        """Get column from HDF5 file, checking both cases for ra/dec."""
+        if col_name in h5_file:
+            return col_name
+        # Try uppercase for coordinate columns
+        if col_name.lower() in ("ra", "dec"):
+            upper_name = col_name.upper()
+            if upper_name in h5_file:
+                return upper_name
+        raise KeyError(f"Column '{col_name}' not found in HDF5 file. "
+                      f"Available columns: {list(h5_file.keys())}")
+    
     def _num_chunks(self, upath, h5_file: h5py.File, columns: list[str] | None) -> int:
         if columns is None:
             size = upath.stat().st_size
         else:
-            size = sum(h5_file[col].nbytes for col in columns)
+            size = sum(h5_file[self._get_h5_column(h5_file, col)].nbytes for col in columns)
         return max(1, int(math.ceil(size / self.chunk_bytes)))
 
     def read(self, input_file: str, read_columns: list[str] | None = None):
@@ -146,7 +158,8 @@ class MMUReader(InputReader):
             num_chunks = self._num_chunks(upath, h5_file, read_columns)
             if read_columns is None:
                 read_columns = list(h5_file)
-            shape = h5_file[read_columns[0]].shape
+            first_col = self._get_h5_column(h5_file, read_columns[0])
+            shape = h5_file[first_col].shape
             if shape == ():
                 n_rows = 1
                 scalar_input = True
@@ -158,12 +171,12 @@ class MMUReader(InputReader):
                 if set([col.lower() for col in read_columns]) == set(["ra", "dec"]):
                     if scalar_input:
                         data = {
-                            col: np_to_pyarrow_array(np.array([h5_file[col][()]]))
+                            col: np_to_pyarrow_array(np.array([h5_file[self._get_h5_column(h5_file, col)][()]]))
                             for col in read_columns
                         }
                     else:
                         data = {
-                            col: np_to_pyarrow_array(h5_file[col][i : i + chunk_size])
+                            col: np_to_pyarrow_array(h5_file[self._get_h5_column(h5_file, col)][i : i + chunk_size])
                             for col in read_columns
                         }
                     table = pa.table(data)
