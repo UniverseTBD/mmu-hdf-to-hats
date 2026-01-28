@@ -67,6 +67,7 @@ jobs:
           - manga
           - swift_sne_ia
           - yse
+          - jwst
           # todo: add more catalogs here once they're ready
     steps:
       - uses: actions/checkout@v4
