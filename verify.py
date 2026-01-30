@@ -39,6 +39,10 @@ catalog_data = {
         "original-mmu": "data/MultimodalUniverse/v1/desi_with_coordinates/",
         "rewritten": "data/desi_hp626_transformed.parquet",
     },
+    "desi_provabgs": {
+        "original-mmu": "data/MultimodalUniverse/v1/desi_provabgs_with_coordinates/",
+        "rewritten": "data/desi_provabgs_hp669_transformed.parquet",
+    },
     "des_y3_sne_ia": {
         "original-mmu": "data/MultimodalUniverse/v1/des_y3_sne_ia_with_coordinates/",
         "rewritten": "data/des_y3_sne_ia_hp1105_transformed.parquet",

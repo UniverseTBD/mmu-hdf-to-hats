@@ -557,7 +557,7 @@ def compare_tables(
                             for i in mismatch_indices[:mismatch_number]
                         ]
 
-                if not columns_equal:
+                if not columns_equal and sample_data:
                     issues.append(
                         {
                             "type": "column_values",
