@@ -65,6 +65,7 @@ jobs:
           - tess
           - vipers
           - legacysurvey
+          - manga
           - swift_sne_ia
           - yse
           # todo: add more catalogs here once they're ready
