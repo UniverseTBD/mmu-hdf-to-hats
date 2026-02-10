@@ -39,6 +39,10 @@ catalog_data = {
         "original-mmu": "data/MultimodalUniverse/v1/desi_with_coordinates/",
         "rewritten": "data/desi_hp626_transformed.parquet",
     },
+    "desi_provabgs": {
+        "original-mmu": "data/MultimodalUniverse/v1/desi_provabgs_with_coordinates/",
+        "rewritten": "data/desi_provabgs_hp669_transformed.parquet",
+    },
     "des_y3_sne_ia": {
         "original-mmu": "data/MultimodalUniverse/v1/des_y3_sne_ia_with_coordinates/",
         "rewritten": "data/des_y3_sne_ia_hp1105_transformed.parquet",
@@ -50,6 +54,10 @@ catalog_data = {
     "gaia": {
         "original-mmu": "data/MultimodalUniverse/v1/gaia_with_coordinates/",
         "rewritten": "data/gaia_hp1631_transformed.parquet",
+    },
+    "legacysurvey": {
+        "original-mmu": "data/MultimodalUniverse/v1/legacysurvey_with_coordinates/",
+        "rewritten": "data/legacysurvey_hp1981_transformed.parquet",
     },
     "gz10": {
         "original-mmu": "data/MultimodalUniverse/v1/gz10_with_coordinates/",
@@ -78,6 +86,11 @@ catalog_data = {
     "vipers": {
         "original-mmu": "data/MultimodalUniverse/v1/vipers_with_coordinates/",
         "rewritten": "data/vipers_hp1107_transformed.parquet",
+    },
+    "manga": {
+        "original-mmu": "data/MultimodalUniverse/v1/manga_with_coordinates/",
+        "rewritten": "data/manga_hp385_transformed.parquet",
+        "allowed-mismatch-columns": "images.filter,images.flux_units,images.psf_units,images.scale_units,maps.group,maps.label,spaxels.flux_units,spaxels.lambda_units,spaxels.skycoo_units,spaxels.ellcoo_r_units,spaxels.ellcoo_rre_units,spaxels.ellcoo_rkpc_units,spaxels.ellcoo_theta_units,maps.array_units",
     },
     "swift_sne_ia": {
         "original-mmu": "data/MultimodalUniverse/v1/swift_sne_ia_with_coordinates/",
