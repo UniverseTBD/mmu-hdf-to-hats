@@ -20,6 +20,7 @@ class PLAsTiCCTransformer(BaseTransformer):
     STR_FEATURES = [
         "obj_type",
     ]
+    DOUBLE_FEATURES = ["ra", "dec"]
 
     BANDS = ["u", "g", "r", "i", "z", "Y"]
 
@@ -41,6 +42,9 @@ class PLAsTiCCTransformer(BaseTransformer):
         # Add all float features
         for f in self.FLOAT_FEATURES:
             fields.append(pa.field(f, pa.float32()))
+
+        for f in self.DOUBLE_FEATURES:
+            fields.append(pa.field(f, pa.float64()))
 
         # Add all string features
         for f in self.STR_FEATURES:
@@ -132,6 +136,9 @@ class PLAsTiCCTransformer(BaseTransformer):
         # 2. Add float features
         for f in self.FLOAT_FEATURES:
             columns[f] = pa.array(data[f][:].astype(np.float32))
+
+        for f in self.DOUBLE_FEATURES:
+            columns[f] = pa.array(data[f][:].astype(np.float64))
 
         # 3. Add string features
         for f in self.STR_FEATURES:
