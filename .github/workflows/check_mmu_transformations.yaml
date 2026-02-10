@@ -64,10 +64,15 @@ jobs:
           - ps1_sne_ia
           - tess
           - vipers
+          - legacysurvey
           - manga
           - swift_sne_ia
           - yse
-          - jwst
+          # - jwst   # this is just too huge for CI, tested locally
+          - plasticc
+          - cfa
+          - csp
+          - ssl_legacysurvey
           # todo: add more catalogs here once they're ready
     steps:
       - uses: actions/checkout@v4
