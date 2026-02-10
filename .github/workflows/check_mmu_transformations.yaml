@@ -69,6 +69,7 @@ jobs:
           - swift_sne_ia
           - yse
           - plasticc
+          - cfa
           # todo: add more catalogs here once they're ready
     steps:
       - uses: actions/checkout@v4
