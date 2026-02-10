@@ -12,10 +12,7 @@ class CFATransformer(BaseTransformer):
 
     # Feature definitions from cfa.py
     STR_FEATURES = ["obj_type"]
-
-    FLOAT_FEATURES = [
-        "object_id",
-    ]
+    DOUBLE_FEATURES = ["ra", "dec"]
 
     def create_schema(self):
         """Create the output PyArrow schema."""
@@ -26,15 +23,14 @@ class CFATransformer(BaseTransformer):
             [
                 pa.field("band", pa.list_(pa.string())),
                 pa.field("time", pa.list_(pa.float32())),
-                pa.field("flux", pa.list_(pa.float32())),
-                pa.field("flux_err", pa.list_(pa.float32())),
+                pa.field("mag", pa.list_(pa.float32())),
+                pa.field("mag_err", pa.list_(pa.float32())),
             ]
         )
         fields.append(pa.field("lightcurve", lightcurve_struct))
 
-        # Add all float features
-        for f in self.FLOAT_FEATURES:
-            fields.append(pa.field(f, pa.float32()))
+        for f in self.DOUBLE_FEATURES:
+            fields.append(pa.field(f, pa.float64()))
 
         # Add all string features
         for f in self.STR_FEATURES:
@@ -49,71 +45,63 @@ class CFATransformer(BaseTransformer):
         """
         Convert HDF5 dataset to PyArrow table.
 
+        Each CFA HDF5 file contains a single supernova with:
+        - bands: shape (n_bands,) byte strings
+        - time: shape (n_bands, n_obs) float32
+        - mag: shape (n_bands, n_obs) float32
+        - mag_err: shape (n_bands, n_obs) float32
+
         Args:
             data: HDF5 file or dict of datasets
 
         Returns:
             pa.Table: Transformed Arrow table
         """
-        # Dictionary to hold all columns
         columns = {}
 
-        # 1. Create lightcurve struct column
-        # Lightcurve data: band, time, flux, flux_err
-        lightcurve_data = data["lightcurve"][:]  # Shape varies by implementation
-        n_objects = len(data["object_id"][:])
+        # 1. Extract object_id
+        object_id = data["object_id"][()]
+        if isinstance(object_id, bytes):
+            object_id = object_id.decode("utf-8")
 
-        band_lists = []
-        time_lists = []
-        flux_lists = []
-        flux_err_lists = []
+        # 2. Parse bands
+        band_names = [b.decode("utf-8") if isinstance(b, bytes) else str(b) for b in data["bands"][()]]
 
-        for i in range(n_objects):
-            lc = lightcurve_data[i]
-            bands = [
-                b.decode("utf-8") if isinstance(b, bytes) else str(b)
-                for b in lc["band"]
-            ]
-            times = lc["time"].astype(np.float32).tolist()
-            fluxes = lc["flux"].astype(np.float32).tolist()
-            flux_errs = lc["flux_err"].astype(np.float32).tolist()
+        # 3. Flatten lightcurve data following the original cfa.py _generate_examples
+        idxs = np.arange(0, data["mag"].shape[0])
+        band_idxs = idxs.repeat(data["mag"].shape[-1]).reshape(len(band_names), -1)
 
-            band_lists.append(bands)
-            time_lists.append(times)
-            flux_lists.append(fluxes)
-            flux_err_lists.append(flux_errs)
+        band_array = np.asarray(
+            [band_names[band_number] for band_number in band_idxs.flatten().astype("int32")]
+        ).astype("str")
+        time_array = np.asarray(data["time"]).flatten().astype("float32")
+        mag_array = np.asarray(data["mag"]).flatten().astype("float32")
+        mag_err_array = np.asarray(data["mag_err"]).flatten().astype("float32")
 
-        lightcurve_arrays = [
-            pa.array(band_lists, type=pa.list_(pa.string())),
-            pa.array(time_lists, type=pa.list_(pa.float32())),
-            pa.array(flux_lists, type=pa.list_(pa.float32())),
-            pa.array(flux_err_lists, type=pa.list_(pa.float32())),
-        ]
-
+        # 4. Create struct column (single row per file)
         columns["lightcurve"] = pa.StructArray.from_arrays(
-            lightcurve_arrays, names=["band", "time", "flux", "flux_err"]
-        )
-
-        # 2. Add float features
-        for f in self.FLOAT_FEATURES:
-            columns[f] = pa.array(data[f][:].astype(np.float32))
-
-        # 3. Add string features
-        for f in self.STR_FEATURES:
-            columns[f] = pa.array(
-                [
-                    str(x.decode("utf-8") if isinstance(x, bytes) else x)
-                    for x in data[f][:]
-                ]
-            )
-
-        # 4. Add object_id
-        columns["object_id"] = pa.array(
             [
-                str(oid.decode("utf-8") if isinstance(oid, bytes) else oid)
-                for oid in data["object_id"][:]
-            ]
+                pa.array([band_array], type=pa.list_(pa.string())),
+                pa.array([time_array], type=pa.list_(pa.float32())),
+                pa.array([mag_array], type=pa.list_(pa.float32())),
+                pa.array([mag_err_array], type=pa.list_(pa.float32())),
+            ],
+            names=["band", "time", "mag", "mag_err"],
         )
+
+        # 5. Add ra/dec
+        for f in self.DOUBLE_FEATURES:
+            columns[f] = pa.array([np.float64(data[f][()])])
+
+        # 6. Add string features
+        for f in self.STR_FEATURES:
+            value = data[f][()]
+            if isinstance(value, bytes):
+                value = value.decode("utf-8")
+            columns[f] = pa.array([value])
+
+        # 7. Add object_id
+        columns["object_id"] = pa.array([object_id])
 
         # Create table with schema
         schema = self.create_schema()
