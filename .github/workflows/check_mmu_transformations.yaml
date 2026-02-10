@@ -64,6 +64,7 @@ jobs:
           - ps1_sne_ia
           - tess
           - vipers
+          - legacysurvey
           - manga
           - swift_sne_ia
           - yse

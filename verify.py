@@ -55,6 +55,10 @@ catalog_data = {
         "original-mmu": "data/MultimodalUniverse/v1/gaia_with_coordinates/",
         "rewritten": "data/gaia_hp1631_transformed.parquet",
     },
+    "legacysurvey": {
+        "original-mmu": "data/MultimodalUniverse/v1/legacysurvey_with_coordinates/",
+        "rewritten": "data/legacysurvey_hp1981_transformed.parquet",
+    },
     "gz10": {
         "original-mmu": "data/MultimodalUniverse/v1/gz10_with_coordinates/",
         "rewritten": "data/gz10_hp513_transformed.parquet",
