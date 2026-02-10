@@ -68,6 +68,7 @@ jobs:
           - manga
           - swift_sne_ia
           - yse
+          # - jwst   # this is just too huge for CI, tested locally
           - plasticc
           - cfa
           - csp

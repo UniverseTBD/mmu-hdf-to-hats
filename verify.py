@@ -100,6 +100,10 @@ catalog_data = {
         "original-mmu": "data/MultimodalUniverse/v1/yse_with_coordinates/",
         "rewritten": "data/yse_hp584_transformed.parquet",
     },
+    "jwst": {
+        "original-mmu": "data/MultimodalUniverse/v1/jwst_with_coordinates/",
+        "rewritten": "data/jwst_hp2245_transformed.parquet",
+    },
     "plasticc": {
         "original-mmu": "data/MultimodalUniverse/v1/plasticc_with_coordinates/",
         "rewritten": "data/plasticc_hp1378_transformed.parquet",
