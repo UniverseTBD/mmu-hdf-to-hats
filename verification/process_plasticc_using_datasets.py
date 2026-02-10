@@ -11,5 +11,5 @@ plasticc = load_dataset_builder(
 plasticc.download_and_prepare()
 
 plasticc_train = plasticc.as_dataset(split="train")
-plasticc_train.save_to_disk("data/MultimodalUniverse/v1/plasticc_datasets_output")
-print(f"Saved {len(plasticc_train)} examples to data/MultimodalUniverse/v1/plasticc_datasets_output")
+plasticc_train.save_to_disk("data/MultimodalUniverse/v1/plasticc_with_coordinates")
+print(f"Saved {len(plasticc_train)} examples to data/MultimodalUniverse/v1/plasticc_with_coordinates")
