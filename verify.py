@@ -108,6 +108,10 @@ catalog_data = {
         "original-mmu": "data/MultimodalUniverse/v1/cfa_with_coordinates/",
         "rewritten": "data/cfa_hp0146_transformed.parquet",
     },
+    "csp": {
+        "original-mmu": "data/MultimodalUniverse/v1/csp_with_coordinates/",
+        "rewritten": "data/csp_hp1113_transformed.parquet",
+    },
 }
 
 

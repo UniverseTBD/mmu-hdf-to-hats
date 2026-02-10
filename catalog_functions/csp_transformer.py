@@ -16,10 +16,9 @@ class CSPTransformer(BaseTransformer):
     ]
 
     FLOAT_FEATURES = [
-        "ra",
-        "dec",
         "redshift",
     ]
+    DOUBLE_FEATURES = ["ra", "dec"]
 
     def create_schema(self):
         """Create the output PyArrow schema."""
@@ -39,6 +38,9 @@ class CSPTransformer(BaseTransformer):
         # Add all float features
         for f in self.FLOAT_FEATURES:
             fields.append(pa.field(f, pa.float32()))
+
+        for f in self.DOUBLE_FEATURES:
+            fields.append(pa.field(f, pa.float64()))
 
         # Add all string features
         for f in self.STR_FEATURES:
@@ -101,7 +103,10 @@ class CSPTransformer(BaseTransformer):
 
         # 2. Add float features (scalars in CSP)
         for f in self.FLOAT_FEATURES:
-            columns[f] = pa.array([float(data[f][:])], type=pa.float32())
+            columns[f] = pa.array([np.float32(data[f][()])], type=pa.float32())
+
+        for f in self.DOUBLE_FEATURES:
+            columns[f] = pa.array([np.float64(data[f][()])], type=pa.float64())
 
         # 3. Add string features (scalars in CSP)
         for f in self.STR_FEATURES:
