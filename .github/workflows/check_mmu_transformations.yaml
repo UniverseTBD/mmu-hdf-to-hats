@@ -71,6 +71,7 @@ jobs:
           - plasticc
           - cfa
           - csp
+          - ssl_legacysurvey
           # todo: add more catalogs here once they're ready
     steps:
       - uses: actions/checkout@v4

@@ -112,6 +112,10 @@ catalog_data = {
         "original-mmu": "data/MultimodalUniverse/v1/csp_with_coordinates/",
         "rewritten": "data/csp_hp1113_transformed.parquet",
     },
+    "ssl_legacysurvey": {
+        "original-mmu": "data/MultimodalUniverse/v1/ssl_legacysurvey_with_coordinates/",
+        "rewritten": "data/ssl_legacysurvey_hp125_transformed.parquet",
+    },
 }
 
 
