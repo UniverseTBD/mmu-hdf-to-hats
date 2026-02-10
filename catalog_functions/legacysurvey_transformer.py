@@ -7,6 +7,7 @@ import numpy as np
 from PIL import Image
 import io
 from catalog_functions.utils import BaseTransformer
+from datasets.features.features import Array2DExtensionType
 
 
 class LegacySurveyTransformer(BaseTransformer):
@@ -48,13 +49,16 @@ class LegacySurveyTransformer(BaseTransformer):
         """Create the output PyArrow schema matching datasets format."""
         fields = []
 
+        array_2d_float = Array2DExtensionType(shape=(self.IMAGE_SIZE, self.IMAGE_SIZE), dtype='float32')
+        array_2d_bool = Array2DExtensionType(shape=(self.IMAGE_SIZE, self.IMAGE_SIZE), dtype='bool')
+
         # Image struct with flattened lists (matching datasets Sequence behavior)
         # {'band': List(Value('string')), 'flux': List(Array2D(...)), ...}
         image_struct = pa.struct([
             pa.field("band", pa.list_(pa.string())),
-            pa.field("flux", pa.list_(pa.list_(pa.list_(pa.float32())))),  # List of 2D arrays
-            pa.field("mask", pa.list_(pa.list_(pa.list_(pa.bool_())))),
-            pa.field("ivar", pa.list_(pa.list_(pa.list_(pa.float32())))),
+            pa.field("flux", pa.list_(array_2d_float)),
+            pa.field("mask", pa.list_(array_2d_bool)),
+            pa.field("ivar", pa.list_(array_2d_float)),
             pa.field("psf_fwhm", pa.list_(pa.float32())),
             pa.field("scale", pa.list_(pa.float32())),
         ])
