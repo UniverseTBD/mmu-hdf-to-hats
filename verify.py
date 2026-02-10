@@ -6,6 +6,7 @@ catalogs = [
     "sdss",
     "btsbot",
     "cfa",
+    "chandra",
     "csp",
     "des_y3_sne_ia",
     "desi",
@@ -119,6 +120,10 @@ catalog_data = {
     "ssl_legacysurvey": {
         "original-mmu": "data/MultimodalUniverse/v1/ssl_legacysurvey_with_coordinates/",
         "rewritten": "data/ssl_legacysurvey_hp125_transformed.parquet",
+    },
+    "chandra": {
+        "original-mmu": "data/MultimodalUniverse/v1/chandra_with_coordinates/",
+        "rewritten": "data/chandra_hp1339_transformed.parquet",
     },
 }
 

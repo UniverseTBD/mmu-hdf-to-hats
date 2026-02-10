@@ -73,6 +73,7 @@ jobs:
           - cfa
           - csp
           - ssl_legacysurvey
+          - chandra
           # todo: add more catalogs here once they're ready
     steps:
       - uses: actions/checkout@v4
