@@ -6,6 +6,13 @@ import pyarrow as pa
 import numpy as np
 from catalog_functions.utils import BaseTransformer
 
+def convert_scalar_col_if_bytes(col):
+    if col.dtype.kind == "S" and col.shape == ():
+        val = col
+    else:
+        val = col[()]
+    return val
+
 
 class CSPTransformer(BaseTransformer):
     """Transforms CSP-I DR3 HDF5 files to PyArrow tables with proper schema."""
@@ -110,13 +117,13 @@ class CSPTransformer(BaseTransformer):
 
         # 3. Add string features (scalars in CSP)
         for f in self.STR_FEATURES:
-            val = data[f][()]
+            val = convert_scalar_col_if_bytes(data[f])
             if isinstance(val, bytes):
                 val = val.decode("utf-8")
             columns[f] = pa.array([str(val)])
 
         # 4. Add object_id (scalar in CSP)
-        oid = data["object_id"][()]
+        oid = convert_scalar_col_if_bytes(data["object_id"])
         if isinstance(oid, bytes):
             oid = oid.decode("utf-8")
         columns["object_id"] = pa.array([str(oid)])

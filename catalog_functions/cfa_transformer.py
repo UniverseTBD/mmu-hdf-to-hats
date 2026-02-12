@@ -6,6 +6,12 @@ import pyarrow as pa
 import numpy as np
 from catalog_functions.utils import BaseTransformer
 
+def convert_scalar_col_if_bytes(col):
+    if col.dtype.kind == "S" and col.shape == ():
+        val = col
+    else:
+        val = col[()]
+    return val
 
 class CFATransformer(BaseTransformer):
     """Transforms CFA Supernova HDF5 files to PyArrow tables with proper schema."""
@@ -60,7 +66,7 @@ class CFATransformer(BaseTransformer):
         columns = {}
 
         # 1. Extract object_id
-        object_id = data["object_id"][()]
+        object_id = convert_scalar_col_if_bytes(["object_id"])
         if isinstance(object_id, bytes):
             object_id = object_id.decode("utf-8")
 
@@ -95,7 +101,7 @@ class CFATransformer(BaseTransformer):
 
         # 6. Add string features
         for f in self.STR_FEATURES:
-            value = data[f][()]
+            value = convert_scalar_col_if_bytes(data[f])
             if isinstance(value, bytes):
                 value = value.decode("utf-8")
             columns[f] = pa.array([value])
