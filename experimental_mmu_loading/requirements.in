@@ -1,0 +1,6 @@
+astropy
+pyarrow
+pandas
+polars
+datasets
+scipy
