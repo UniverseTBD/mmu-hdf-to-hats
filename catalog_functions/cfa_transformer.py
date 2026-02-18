@@ -66,7 +66,7 @@ class CFATransformer(BaseTransformer):
         columns = {}
 
         # 1. Extract object_id
-        object_id = convert_scalar_col_if_bytes(["object_id"])
+        object_id = convert_scalar_col_if_bytes(data["object_id"])
         if isinstance(object_id, bytes):
             object_id = object_id.decode("utf-8")
 

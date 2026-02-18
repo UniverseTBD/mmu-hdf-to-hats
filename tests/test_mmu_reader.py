@@ -1,10 +1,28 @@
 from main import MMUReader
 from catalog_functions.csp_transformer import CSPTransformer
+from catalog_functions.cfa_transformer import CFATransformer
+
+def test_mmu_reader_cfa():
+    mmu = MMUReader(chunk_mb=128, transform_klass=CFATransformer)
+    tables = [t for t in mmu.read("tests/data/cfa/SN2007bc.hdf5")]
+
+    # Single-object file should produce exactly one table chunk
+    assert len(tables) == 1
+    table = tables[0]
+
+    # Should have exactly 1 row (one supernova per file)
+    assert table.num_rows == 1
+
+    # Check schema has the expected columns
+    column_names = set(table.column_names)
+    assert column_names == {'dec', 'ra', 'obj_type', 'object_id', 'lightcurve'}
+    # Verify object_id value
+    assert table.column("object_id")[0].as_py() == "SN2007bc"
 
 
-def test_mmu_reader():
+def test_mmu_reader_csp():
     mmu = MMUReader(chunk_mb=128, transform_klass=CSPTransformer)
-    tables = [t for t in mmu.read("tests/data/example_SN2004dt.hdf5")]
+    tables = [t for t in mmu.read("tests/data/csp/example_SN2004dt.hdf5")]
 
     # Single-object file should produce exactly one table chunk
     assert len(tables) == 1
@@ -52,7 +70,7 @@ def test_mmu_reader():
 def test_mmu_reader_ra_dec_only():
     """When read_columns=['ra', 'dec'], should return a simple table with coordinates."""
     mmu = MMUReader(chunk_mb=128, transform_klass=CSPTransformer)
-    tables = [t for t in mmu.read("tests/data/example_SN2004dt.hdf5", read_columns=["ra", "dec"])]
+    tables = [t for t in mmu.read("tests/data/csp/example_SN2004dt.hdf5", read_columns=["ra", "dec"])]
 
     assert len(tables) == 1
     table = tables[0]
