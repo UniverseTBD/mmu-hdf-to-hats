@@ -1,6 +1,12 @@
 from main import MMUReader
 from catalog_functions.csp_transformer import CSPTransformer
 from catalog_functions.cfa_transformer import CFATransformer
+from catalog_functions.desi_transformer import DESITransformer
+
+def test_mmu_reader_desi():
+    mmu = MMUReader(chunk_mb=128, transform_klass=DESITransformer)
+    tables = [t for t in mmu.read("tests/data/desi/001-of-001.hdf5")]
+    breakpoint()
 
 def test_mmu_reader_cfa():
     mmu = MMUReader(chunk_mb=128, transform_klass=CFATransformer)
