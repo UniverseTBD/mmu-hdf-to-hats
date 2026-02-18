@@ -116,6 +116,7 @@ catalog_data = {
     "csp": {
         "original-mmu": "data/MultimodalUniverse/v1/csp_with_coordinates/",
         "rewritten": "data/csp_hp1113_transformed.parquet",
+        "allowed-mismatch-columns": "object_id,spec_class",  # these are transformed from <HDF5 dataset "spec_class": shape (), type "|S5"> to a string, same for object_id. I think we can live with this
     },
     "ssl_legacysurvey": {
         "original-mmu": "data/MultimodalUniverse/v1/ssl_legacysurvey_with_coordinates/",

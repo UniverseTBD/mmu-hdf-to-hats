@@ -5,13 +5,14 @@ CFATransformer: Clean class-based transformation from HDF5 to PyArrow tables.
 import pyarrow as pa
 import numpy as np
 from catalog_functions.utils import BaseTransformer
+from h5py import Dataset
 
-def convert_scalar_col_if_bytes(col):
-    if col.dtype.kind == "S" and col.shape == ():
-        val = col
+def handle_bytes_datasets(data):
+    if isinstance(data, Dataset):
+        value = data[()]
+        return value
     else:
-        val = col[()]
-    return val
+        return data
 
 class CFATransformer(BaseTransformer):
     """Transforms CFA Supernova HDF5 files to PyArrow tables with proper schema."""
@@ -66,7 +67,8 @@ class CFATransformer(BaseTransformer):
         columns = {}
 
         # 1. Extract object_id
-        object_id = convert_scalar_col_if_bytes(data["object_id"])
+        # check if this is an hdf5.Dataset
+        object_id = handle_bytes_datasets(data["object_id"])
         if isinstance(object_id, bytes):
             object_id = object_id.decode("utf-8")
 
@@ -101,20 +103,12 @@ class CFATransformer(BaseTransformer):
 
         # 6. Add string features
         for f in self.STR_FEATURES:
-            try:
-                value = convert_scalar_col_if_bytes(data[f][()])
-                if isinstance(value, bytes):
-                    value = value.decode("utf-8")
-                columns[f] = pa.array([value])
-            except:
-                breakpoint()
-                value = convert_scalar_col_if_bytes(data[f][()])
-                if isinstance(value, bytes):
-                    value = value.decode("utf-8")
-                columns[f] = pa.array([value])
+            value = handle_bytes_datasets(data[f])
+            if isinstance(value, bytes):
+                value = value.decode("utf-8")
+            columns[f] = pa.array([value])
 
         # 7. Add object_id
-        breakpoint()
         columns["object_id"] = pa.array([object_id])
 
         # Create table with schema
