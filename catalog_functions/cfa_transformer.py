@@ -101,12 +101,20 @@ class CFATransformer(BaseTransformer):
 
         # 6. Add string features
         for f in self.STR_FEATURES:
-            value = convert_scalar_col_if_bytes(data[f])
-            if isinstance(value, bytes):
-                value = value.decode("utf-8")
-            columns[f] = pa.array([value])
+            try:
+                value = convert_scalar_col_if_bytes(data[f][()])
+                if isinstance(value, bytes):
+                    value = value.decode("utf-8")
+                columns[f] = pa.array([value])
+            except:
+                breakpoint()
+                value = convert_scalar_col_if_bytes(data[f][()])
+                if isinstance(value, bytes):
+                    value = value.decode("utf-8")
+                columns[f] = pa.array([value])
 
         # 7. Add object_id
+        breakpoint()
         columns["object_id"] = pa.array([object_id])
 
         # Create table with schema
