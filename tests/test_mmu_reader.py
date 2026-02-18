@@ -1,7 +1,6 @@
 from main import MMUReader
 from catalog_functions.csp_transformer import CSPTransformer
 from catalog_functions.cfa_transformer import CFATransformer
-from catalog_functions.desi_transformer import DESITransformer
 
 
 def test_mmu_reader_cfa():
