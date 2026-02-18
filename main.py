@@ -154,22 +154,30 @@ class MMUReader(InputReader):
 
     def read(self, input_file: str, read_columns: list[str] | None = None):
         upath = UPath(input_file)
+        cols_scalar = {}
         with upath.open("rb") as fh, h5py.File(fh) as h5_file:
             num_chunks = self._num_chunks(upath, h5_file, read_columns)
             if read_columns is None:
                 read_columns = list(h5_file)
-            first_col = self._get_h5_column(h5_file, read_columns[0])
-            shape = h5_file[first_col].shape
+            first_col_name = self._get_h5_column(h5_file, read_columns[0])
+            shape = h5_file[first_col_name].shape
             if shape == ():
+                cols_scalar[read_columns[0]] = True
                 n_rows = 1
-                scalar_input = True
             else:
+                cols_scalar[read_columns[0]] = False
                 n_rows = shape[0]
-                scalar_input = False
+            for col in read_columns[1:]:
+                col_name = self._get_h5_column(h5_file, col)
+                shape = h5_file[col_name].shape
+                if shape == ():
+                    cols_scalar[col] = True
+                else:
+                    cols_scalar[col] = False
             chunk_size = max(1, n_rows // num_chunks)
             for i in range(0, n_rows, chunk_size):
                 if set([col.lower() for col in read_columns]) == set(["ra", "dec"]):
-                    if scalar_input:
+                    if cols_scalar[first_col_name]:
                         data = {
                             col: np_to_pyarrow_array(np.array([h5_file[self._get_h5_column(h5_file, col)][()]]))
                             for col in read_columns
@@ -182,13 +190,15 @@ class MMUReader(InputReader):
                     table = pa.table(data)
                     yield table
                 else:
-                    if scalar_input:
+                    if cols_scalar[first_col_name]:
                         data = h5_file
                     else:
-                        data = {
-                            col: h5_file[col][i : i + chunk_size]
-                            for col in read_columns
-                        }
+                        data = {}
+                        for col in read_columns:
+                            if cols_scalar[col]:
+                                data[col] = h5_file[col][()]
+                            else:
+                                data[col] = h5_file[col][i : i + chunk_size]
                     table = self.transform.dataset_to_table(data)
                     yield table
 
