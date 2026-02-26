@@ -11,7 +11,35 @@ class TESSTransformer(BaseTransformer):
     """Transforms TESS HDF5 files to PyArrow tables with proper schema."""
 
     # Feature definitions from tess.py
-    FLOAT_FEATURES = ["RA", "DEC"]
+    DOUBLE_FEATURES = ["ra", "dec"]
+
+    def _get_coordinate_column(self, data, coord_name):
+        """
+        Get coordinate column from HDF5 data, checking both cases.
+        
+        Args:
+            data: HDF5 file or dict of datasets
+            coord_name: lowercase coordinate name ('ra' or 'dec')
+            
+        Returns:
+            numpy array of coordinate values
+            
+        Raises:
+            KeyError: if neither case exists in the data
+        """
+        # Try lowercase first, then uppercase
+        if coord_name in data:
+            return data[coord_name][:]
+        
+        upper_name = coord_name.upper()
+        if upper_name in data:
+            return data[upper_name][:]
+        
+        raise KeyError(
+            f"Coordinate column '{coord_name}' not found. "
+            f"Tried: '{coord_name}', '{upper_name}'. "
+            f"Available columns: {list(data.keys())}"
+        )
 
     def create_schema(self):
         """Create the output PyArrow schema."""
@@ -28,7 +56,7 @@ class TESSTransformer(BaseTransformer):
         fields.append(pa.field("lightcurve", lightcurve_struct))
 
         # Add all float features
-        for f in self.FLOAT_FEATURES:
+        for f in self.DOUBLE_FEATURES:
             fields.append(pa.field(f, pa.float64()))
 
         # Object ID
@@ -70,8 +98,9 @@ class TESSTransformer(BaseTransformer):
         )
 
         # 2. Add float features
-        for f in self.FLOAT_FEATURES:
-            columns[f] = pa.array(data[f][:].astype(np.float32))
+        for output_name in self.DOUBLE_FEATURES:
+            coord_data = self._get_coordinate_column(data, output_name)
+            columns[output_name] = pa.array(coord_data.astype(np.float64))
 
         # 3. Add object_id
         columns["object_id"] = pa.array([str(oid) for oid in data["object_id"][:]])

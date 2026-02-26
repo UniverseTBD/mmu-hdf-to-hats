@@ -30,18 +30,18 @@ class DESIPROVABGSTransformer(BaseTransformer):
         "PROVABGS_W_FIBASSIGN",
     ]
 
-    BOOL_FEATURES = [
-        "IS_BGS_BRIGHT",
-        "IS_BGS_FAINT",
-    ]
+    #BOOL_FEATURES = [
+    #    "IS_BGS_BRIGHT",
+    #    "IS_BGS_FAINT",
+    #]
 
     def create_schema(self):
         """Create the output PyArrow schema."""
         fields = []
 
         # Coordinates
-        fields.append(pa.field("ra", pa.float32()))
-        fields.append(pa.field("dec", pa.float32()))
+        fields.append(pa.field("ra", pa.float64()))
+        fields.append(pa.field("dec", pa.float64()))
 
         # PROVABGS MCMC posterior samples (100 samples x 13 parameters)
         fields.append(pa.field("PROVABGS_MCMC", pa.list_(pa.list_(pa.float32()))))
@@ -57,8 +57,8 @@ class DESIPROVABGSTransformer(BaseTransformer):
             fields.append(pa.field(f, pa.float32()))
 
         # Add all boolean features
-        for f in self.BOOL_FEATURES:
-            fields.append(pa.field(f, pa.bool_()))
+        #for f in self.BOOL_FEATURES:
+        #    fields.append(pa.field(f, pa.bool_()))
 
         # Object ID
         fields.append(pa.field("object_id", pa.string()))
@@ -87,14 +87,14 @@ class DESIPROVABGSTransformer(BaseTransformer):
         # Convert to list of lists of lists
         mcmc_lists = [[row.tolist() for row in obj_mcmc] for obj_mcmc in mcmc_data]
         columns["PROVABGS_MCMC"] = pa.array(
-            mcmc_lists, type=pa.list_(pa.list_(pa.float32()))
+            mcmc_lists, type=pa.list_(pa.list_(pa.float64()))
         )
 
         # 3. Add PROVABGS best-fit parameters (shape: [n_objects, 13])
         theta_bf_data = data["PROVABGS_THETA_BF"][:]
         theta_bf_lists = [row.tolist() for row in theta_bf_data]
         columns["PROVABGS_THETA_BF"] = pa.array(
-            theta_bf_lists, type=pa.list_(pa.float32())
+            theta_bf_lists, type=pa.list_(pa.float64())
         )
 
         # 4. Add log stellar mass
@@ -104,11 +104,11 @@ class DESIPROVABGSTransformer(BaseTransformer):
 
         # 5. Add float features
         for f in self.FLOAT_FEATURES:
-            columns[f] = pa.array(data[f][:].astype(np.float32))
+            columns[f] = pa.array(data[f][:].astype(np.float32).squeeze())
 
         # 6. Add boolean features
-        for f in self.BOOL_FEATURES:
-            columns[f] = pa.array(data[f][:].astype(bool))
+        #for f in self.BOOL_FEATURES:
+        #    columns[f] = pa.array(data[f][:].astype(bool))
 
         # 7. Add object_id
         columns["object_id"] = pa.array([str(oid) for oid in data["object_id"][:]])

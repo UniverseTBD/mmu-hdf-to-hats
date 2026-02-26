@@ -5,6 +5,7 @@ SSLLegacySurveyTransformer: Clean class-based transformation from HDF5 to PyArro
 import pyarrow as pa
 import numpy as np
 from catalog_functions.utils import BaseTransformer
+from datasets.features.features import Array2DExtensionType
 
 
 class SSLLegacySurveyTransformer(BaseTransformer):
@@ -24,6 +25,7 @@ class SSLLegacySurveyTransformer(BaseTransformer):
         "psfdepth_z",
         "z_spec",
     ]
+    DOUBLE_FEATURES = ["ra", "dec"]
 
     IMAGE_SIZE = 152
     BANDS = ["DES-G", "DES-R", "DES-Z"]
@@ -32,20 +34,25 @@ class SSLLegacySurveyTransformer(BaseTransformer):
         """Create the output PyArrow schema."""
         fields = []
 
-        # Image sequence with band, flux, psf_fwhm, scale
+        array_2d_float = Array2DExtensionType(shape=(self.IMAGE_SIZE, self.IMAGE_SIZE), dtype='float32')
+
+        # Image struct-of-lists (matching datasets Sequence behavior)
         image_struct = pa.struct(
             [
-                pa.field("band", pa.string()),
-                pa.field("flux", pa.list_(pa.list_(pa.float32()))),  # 2D array
-                pa.field("psf_fwhm", pa.float32()),
-                pa.field("scale", pa.float32()),
+                pa.field("band", pa.list_(pa.string())),
+                pa.field("flux", pa.list_(array_2d_float)),
+                pa.field("psf_fwhm", pa.list_(pa.float32())),
+                pa.field("scale", pa.list_(pa.float32())),
             ]
         )
-        fields.append(pa.field("image", pa.list_(image_struct)))
+        fields.append(pa.field("image", image_struct))
 
         # Add all float features
         for f in self.FLOAT_FEATURES:
             fields.append(pa.field(f, pa.float32()))
+
+        for f in self.DOUBLE_FEATURES:
+            fields.append(pa.field(f, pa.float64()))
 
         # Object ID
         fields.append(pa.field("object_id", pa.string()))
@@ -62,69 +69,58 @@ class SSLLegacySurveyTransformer(BaseTransformer):
         Returns:
             pa.Table: Transformed Arrow table
         """
-        # Dictionary to hold all columns
         columns = {}
         n_objects = len(data["object_id"][:])
 
-        # 1. Create image sequence column
-        # image_array shape: [n_objects, n_bands, 152, 152]
+        # 1. Create image struct-of-lists column
         image_array = data["image_array"][:]
         image_band = data["image_band"][:]
         image_psf_fwhm = data["image_psf_fwhm"][:]
         image_scale = data["image_scale"][:]
 
-        image_lists = []
+        # Decode band names (same for all objects)
+        band_names_decoded = []
+        for j in range(len(self.BANDS)):
+            band = image_band[0][j]
+            if isinstance(band, bytes):
+                band = band.decode("utf-8")
+            band_names_decoded.append(band)
+
+        band_arrays = pa.array([band_names_decoded] * n_objects, type=pa.list_(pa.string()))
+
+        # Build flux arrays with Array2D extension type (following HSC pattern)
+        array_2d_float = Array2DExtensionType(shape=(self.IMAGE_SIZE, self.IMAGE_SIZE), dtype='float32')
+
+        flux_data = []
         for i in range(n_objects):
-            images_for_object = []
-            for j, band_name in enumerate(self.BANDS):
-                # Get band name from data
-                band = image_band[i][j]
-                if isinstance(band, bytes):
-                    band = band.decode("utf-8")
+            obj_bands = []
+            for j in range(len(self.BANDS)):
+                obj_bands.append([row for row in image_array[i, j]])
+            flux_data.append(obj_bands)
 
-                # Convert 2D flux array to list of lists
-                flux_2d = image_array[i][j]
-                flux_list = [row.tolist() for row in flux_2d]
+        storage_type = pa.list_(array_2d_float.storage_type)
+        storage_array = pa.array(flux_data, type=storage_type)
+        target_type = pa.list_(array_2d_float)
+        flux_arrays = storage_array.cast(target_type)
 
-                images_for_object.append(
-                    {
-                        "band": band,
-                        "flux": flux_list,
-                        "psf_fwhm": float(image_psf_fwhm[i][j]),
-                        "scale": float(image_scale[i][j]),
-                    }
-                )
-            image_lists.append(images_for_object)
+        # Scalar lists
+        psf_fwhm_arrays = pa.array([row for row in image_psf_fwhm.astype(np.float32)], type=pa.list_(pa.float32()))
+        scale_arrays = pa.array([row for row in image_scale.astype(np.float32)], type=pa.list_(pa.float32()))
 
-        # Create struct arrays for images
-        band_arrays = []
-        flux_arrays = []
-        psf_fwhm_arrays = []
-        scale_arrays = []
-
-        for obj_images in image_lists:
-            band_arrays.append([img["band"] for img in obj_images])
-            flux_arrays.append([img["flux"] for img in obj_images])
-            psf_fwhm_arrays.append([img["psf_fwhm"] for img in obj_images])
-            scale_arrays.append([img["scale"] for img in obj_images])
-
-        image_structs = pa.StructArray.from_arrays(
-            [
-                pa.array(band_arrays, type=pa.list_(pa.string())),
-                pa.array(flux_arrays, type=pa.list_(pa.list_(pa.list_(pa.float32())))),
-                pa.array(psf_fwhm_arrays, type=pa.list_(pa.float32())),
-                pa.array(scale_arrays, type=pa.list_(pa.float32())),
-            ],
+        columns["image"] = pa.StructArray.from_arrays(
+            [band_arrays, flux_arrays, psf_fwhm_arrays, scale_arrays],
             names=["band", "flux", "psf_fwhm", "scale"],
         )
-
-        columns["image"] = image_structs
 
         # 2. Add float features
         for f in self.FLOAT_FEATURES:
             columns[f] = pa.array(data[f][:].astype(np.float32))
 
-        # 3. Add object_id
+        # 3. Add ra/dec as float64
+        for f in self.DOUBLE_FEATURES:
+            columns[f] = pa.array(data[f][:].astype(np.float64))
+
+        # 4. Add object_id (int64 in HDF5, convert to string)
         columns["object_id"] = pa.array([str(oid) for oid in data["object_id"][:]])
 
         # Create table with schema

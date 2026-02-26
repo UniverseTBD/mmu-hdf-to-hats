@@ -6,6 +6,7 @@ catalogs = [
     "sdss",
     "btsbot",
     "cfa",
+    "chandra",
     "csp",
     "des_y3_sne_ia",
     "desi",
@@ -39,6 +40,10 @@ catalog_data = {
         "original-mmu": "data/MultimodalUniverse/v1/desi_with_coordinates/",
         "rewritten": "data/desi_hp626_transformed.parquet",
     },
+    "desi_provabgs": {
+        "original-mmu": "data/MultimodalUniverse/v1/desi_provabgs_with_coordinates/",
+        "rewritten": "data/desi_provabgs_hp669_transformed.parquet",
+    },
     "des_y3_sne_ia": {
         "original-mmu": "data/MultimodalUniverse/v1/des_y3_sne_ia_with_coordinates/",
         "rewritten": "data/des_y3_sne_ia_hp1105_transformed.parquet",
@@ -50,6 +55,10 @@ catalog_data = {
     "gaia": {
         "original-mmu": "data/MultimodalUniverse/v1/gaia_with_coordinates/",
         "rewritten": "data/gaia_hp1631_transformed.parquet",
+    },
+    "legacysurvey": {
+        "original-mmu": "data/MultimodalUniverse/v1/legacysurvey_with_coordinates/",
+        "rewritten": "data/legacysurvey_hp1981_transformed.parquet",
     },
     "gz10": {
         "original-mmu": "data/MultimodalUniverse/v1/gz10_with_coordinates/",
@@ -79,6 +88,11 @@ catalog_data = {
         "original-mmu": "data/MultimodalUniverse/v1/vipers_with_coordinates/",
         "rewritten": "data/vipers_hp1107_transformed.parquet",
     },
+    "manga": {
+        "original-mmu": "data/MultimodalUniverse/v1/manga_with_coordinates/",
+        "rewritten": "data/manga_hp385_transformed.parquet",
+        "allowed-mismatch-columns": "images.filter,images.flux_units,images.psf_units,images.scale_units,maps.group,maps.label,spaxels.flux_units,spaxels.lambda_units,spaxels.skycoo_units,spaxels.ellcoo_r_units,spaxels.ellcoo_rre_units,spaxels.ellcoo_rkpc_units,spaxels.ellcoo_theta_units,maps.array_units",
+    },
     "swift_sne_ia": {
         "original-mmu": "data/MultimodalUniverse/v1/swift_sne_ia_with_coordinates/",
         "rewritten": "data/swift_sne_ia_hp2158_transformed.parquet",
@@ -86,6 +100,31 @@ catalog_data = {
     "yse": {
         "original-mmu": "data/MultimodalUniverse/v1/yse_with_coordinates/",
         "rewritten": "data/yse_hp584_transformed.parquet",
+    },
+    "jwst": {
+        "original-mmu": "data/MultimodalUniverse/v1/jwst_with_coordinates/",
+        "rewritten": "data/jwst_hp2245_transformed.parquet",
+    },
+    "plasticc": {
+        "original-mmu": "data/MultimodalUniverse/v1/plasticc_with_coordinates/",
+        "rewritten": "data/plasticc_hp1378_transformed.parquet",
+    },
+    "cfa": {
+        "original-mmu": "data/MultimodalUniverse/v1/cfa_with_coordinates/",
+        "rewritten": "data/cfa_hp0146_transformed.parquet",
+    },
+    "csp": {
+        "original-mmu": "data/MultimodalUniverse/v1/csp_with_coordinates/",
+        "rewritten": "data/csp_hp1113_transformed.parquet",
+        "allowed-mismatch-columns": "object_id,spec_class",  # these are transformed from <HDF5 dataset "spec_class": shape (), type "|S5"> to a string, same for object_id. I think we can live with this
+    },
+    "ssl_legacysurvey": {
+        "original-mmu": "data/MultimodalUniverse/v1/ssl_legacysurvey_with_coordinates/",
+        "rewritten": "data/ssl_legacysurvey_hp125_transformed.parquet",
+    },
+    "chandra": {
+        "original-mmu": "data/MultimodalUniverse/v1/chandra_with_coordinates/",
+        "rewritten": "data/chandra_hp1339_transformed.parquet",
     },
 }
 

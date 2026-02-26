@@ -42,7 +42,7 @@ jobs:
           uv venv .venv && source .venv/bin/activate && uv pip install '.[dev]'
       - name: run pytest
         run: |
-          source .venv/bin/activate && pytest tests/
+          source .venv/bin/activate && python -m pytest tests/
 
   check_transformations:
     needs: setup
@@ -64,8 +64,16 @@ jobs:
           - ps1_sne_ia
           - tess
           - vipers
+          - legacysurvey
+          - manga
           - swift_sne_ia
           - yse
+          # - jwst   # this is just too huge for CI, tested locally
+          - plasticc
+          - cfa
+          - csp
+          - ssl_legacysurvey
+          - chandra
           # todo: add more catalogs here once they're ready
     steps:
       - uses: actions/checkout@v4

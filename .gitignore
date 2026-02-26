@@ -198,3 +198,5 @@ slurm*.out
 
 # Temporary exploration directories
 test_data_exploration/
+hats/
+tmp/

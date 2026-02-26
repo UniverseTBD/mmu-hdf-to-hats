@@ -103,6 +103,12 @@ def parse_args(argv):
         action="store_true",
         help="Enable debug mode (single worker, single thread, no separate processes)",
     )
+    parser.add_argument(
+        "--row-group-size",
+        default=None,
+        type=int,
+        help="Row group size for parquet files. If not specified, uses PyArrow's default (min of table size and 1M rows). For image data, try 50-250.",
+    )
     return parser.parse_args(argv)
 
 
@@ -127,49 +133,72 @@ class MMUReader(InputReader):
         self.chunk_bytes = chunk_mb * 1024 * 1024
         self.transform = transform_klass()
 
+    def _get_h5_column(self, h5_file, col_name):
+        """Get column from HDF5 file, checking both cases for ra/dec."""
+        if col_name in h5_file:
+            return col_name
+        # Try uppercase for coordinate columns
+        if col_name.lower() in ("ra", "dec"):
+            upper_name = col_name.upper()
+            if upper_name in h5_file:
+                return upper_name
+        raise KeyError(f"Column '{col_name}' not found in HDF5 file. "
+                      f"Available columns: {list(h5_file.keys())}")
+    
     def _num_chunks(self, upath, h5_file: h5py.File, columns: list[str] | None) -> int:
         if columns is None:
             size = upath.stat().st_size
         else:
-            size = sum(h5_file[col].nbytes for col in columns)
+            size = sum(h5_file[self._get_h5_column(h5_file, col)].nbytes for col in columns)
         return max(1, int(math.ceil(size / self.chunk_bytes)))
 
     def read(self, input_file: str, read_columns: list[str] | None = None):
         upath = UPath(input_file)
+        cols_scalar = {}
         with upath.open("rb") as fh, h5py.File(fh) as h5_file:
             num_chunks = self._num_chunks(upath, h5_file, read_columns)
             if read_columns is None:
                 read_columns = list(h5_file)
-            shape = h5_file[read_columns[0]].shape
+            first_col_name = self._get_h5_column(h5_file, read_columns[0])
+            shape = h5_file[first_col_name].shape
             if shape == ():
+                cols_scalar[read_columns[0]] = True
                 n_rows = 1
-                scalar_input = True
             else:
+                cols_scalar[read_columns[0]] = False
                 n_rows = shape[0]
-                scalar_input = False
+            for col in read_columns[1:]:
+                col_name = self._get_h5_column(h5_file, col)
+                shape = h5_file[col_name].shape
+                if shape == ():
+                    cols_scalar[col] = True
+                else:
+                    cols_scalar[col] = False
             chunk_size = max(1, n_rows // num_chunks)
             for i in range(0, n_rows, chunk_size):
                 if set([col.lower() for col in read_columns]) == set(["ra", "dec"]):
-                    if scalar_input:
+                    if cols_scalar[first_col_name]:
                         data = {
-                            col: np_to_pyarrow_array(np.array([h5_file[col][()]]))
+                            col: np_to_pyarrow_array(np.array([h5_file[self._get_h5_column(h5_file, col)][()]]))
                             for col in read_columns
                         }
                     else:
                         data = {
-                            col: np_to_pyarrow_array(h5_file[col][i : i + chunk_size])
+                            col: np_to_pyarrow_array(h5_file[self._get_h5_column(h5_file, col)][i : i + chunk_size])
                             for col in read_columns
                         }
                     table = pa.table(data)
                     yield table
                 else:
-                    if scalar_input:
+                    if cols_scalar[first_col_name]:
                         data = h5_file
                     else:
-                        data = {
-                            col: h5_file[col][i : i + chunk_size]
-                            for col in read_columns
-                        }
+                        data = {}
+                        for col in read_columns:
+                            if cols_scalar[col]:
+                                data[col] = h5_file[col][()]
+                            else:
+                                data[col] = h5_file[col][i : i + chunk_size]
                     table = self.transform.dataset_to_table(data)
                     yield table
 
@@ -198,6 +227,10 @@ def main(argv=None):
     if cmd_args.first_n is not None:
         input_files = input_files[: cmd_args.first_n]
 
+    row_group_kwargs = {}
+    if cmd_args.row_group_size is not None:
+        row_group_kwargs['num_rows'] = cmd_args.row_group_size
+
     import_args = (
         CollectionArguments(
             output_artifact_name=cmd_args.name,
@@ -211,6 +244,7 @@ def main(argv=None):
             dec_column=cmd_args.dec,
             pixel_threshold=cmd_args.max_rows,
             lowest_healpix_order=4,
+            row_group_kwargs=row_group_kwargs,
         )
         .add_margin(margin_threshold=10.0, is_default=True)
     )
@@ -224,7 +258,7 @@ def main(argv=None):
         )
     else:
         # Production mode: use multiple workers
-        client_kwargs = {"n_workers": min(8, cpu_count()), "threads_per_worker": 1}
+        client_kwargs = {"n_workers": min(8, cpu_count()), "threads_per_worker": 1, "memory_limit": "48G"}
         LOGGER.info(
             f"Running in PRODUCTION mode ({client_kwargs['n_workers']} workers)"
         )
