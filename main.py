@@ -179,12 +179,16 @@ class MMUReader(InputReader):
                 if set([col.lower() for col in read_columns]) == set(["ra", "dec"]):
                     if cols_scalar[first_col_name]:
                         data = {
-                            col: np_to_pyarrow_array(np.array([h5_file[self._get_h5_column(h5_file, col)][()]]))
+                            col: np_to_pyarrow_array(
+                                np.array([h5_file[self._get_h5_column(h5_file, col)][()]]).astype(np.float64)
+                            )
                             for col in read_columns
                         }
                     else:
                         data = {
-                            col: np_to_pyarrow_array(h5_file[self._get_h5_column(h5_file, col)][i : i + chunk_size])
+                            col: np_to_pyarrow_array(
+                                h5_file[self._get_h5_column(h5_file, col)][i : i + chunk_size].astype(np.float64)
+                            )
                             for col in read_columns
                         }
                     table = pa.table(data)
