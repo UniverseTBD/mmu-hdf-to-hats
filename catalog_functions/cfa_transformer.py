@@ -5,7 +5,14 @@ CFATransformer: Clean class-based transformation from HDF5 to PyArrow tables.
 import pyarrow as pa
 import numpy as np
 from catalog_functions.utils import BaseTransformer
+from h5py import Dataset
 
+def handle_bytes_datasets(data):
+    if isinstance(data, Dataset):
+        value = data[()]
+        return value
+    else:
+        return data
 
 class CFATransformer(BaseTransformer):
     """Transforms CFA Supernova HDF5 files to PyArrow tables with proper schema."""
@@ -60,7 +67,8 @@ class CFATransformer(BaseTransformer):
         columns = {}
 
         # 1. Extract object_id
-        object_id = data["object_id"][()]
+        # check if this is an hdf5.Dataset
+        object_id = handle_bytes_datasets(data["object_id"])
         if isinstance(object_id, bytes):
             object_id = object_id.decode("utf-8")
 
@@ -95,7 +103,7 @@ class CFATransformer(BaseTransformer):
 
         # 6. Add string features
         for f in self.STR_FEATURES:
-            value = data[f][()]
+            value = handle_bytes_datasets(data[f])
             if isinstance(value, bytes):
                 value = value.decode("utf-8")
             columns[f] = pa.array([value])
