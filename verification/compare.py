@@ -201,13 +201,17 @@ def compare_nested_list_column(col1, col2, col_name, col_type):
         has_ext2 = hasattr(col2_value_type, "storage_type")
 
         if has_ext1 != has_ext2:
-            # Type mismatch: one is extension type, other is not
-            return {"": (False, [{
-                "error": "TYPE_MISMATCH",
-                "left_type": str(col1_value_type),
-                "right_type": str(col2_value_type),
-                "message": f"Extension type mismatch: left={col1_value_type}, right={col2_value_type}"
-            }])}
+            warnings.warn(
+                f"Extension type mismatch for column '{col_name}': "
+                f"left={col1_value_type}, right={col2_value_type}. "
+                f"Casting to storage types for value comparison."
+            )
+            if has_ext1:
+                storage_type1 = pa.list_(col1_value_type.storage_type)
+                col1_compare = col1.cast(storage_type1)
+            if has_ext2:
+                storage_type2 = pa.list_(col2_value_type.storage_type)
+                col2_compare = col2.cast(storage_type2)
 
         # If both or neither have extension types, try to compare
         if has_ext1:
