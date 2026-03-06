@@ -35,6 +35,7 @@ jobs:
       - name: Create venv and install dependencies
         if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
+          rm -rf .venv
           uv venv .venv && uv pip install '.[dev]'
       - name: Install dependencies if venv incomplete
         if: steps.cache-venv.outputs.cache-hit == 'true'
