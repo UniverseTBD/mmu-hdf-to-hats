@@ -1,0 +1,5 @@
+datasets==3.6
+astropy==7.1
+scipy
+numpy<2
+ipdb

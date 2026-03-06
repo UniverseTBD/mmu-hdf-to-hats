@@ -11,14 +11,27 @@ import h5py
 import pandas as pd
 from astropy import units
 
-def _file_to_catalog(filename: str, keys: List[str]):
-    with h5py.File(filename, 'r') as data:
-        return Table({k: data[k] for k in keys})
 
-def get_catalog(dset: DatasetBuilder,
-                keys: List[str] = ['object_id', 'ra', 'dec', 'healpix'],
-                split: str = 'train',
-                num_proc: int = 1):
+def _file_to_catalog(filename: str, keys: List[str]):
+    with h5py.File(filename, "r") as data:
+        table_data = {}
+        for k in keys:
+            value = data[k][()]  # Get the value
+            # Convert bytes dtype to unicode for astropy compatibility
+            if hasattr(value, "dtype") and value.dtype.kind == "S":
+                # Wrap scalar in array and convert bytes to unicode
+                table_data[k] = np.atleast_1d(value).astype("U")
+            else:
+                table_data[k] = np.atleast_1d(value)
+        return Table(table_data)
+
+
+def get_catalog(
+    dset: DatasetBuilder,
+    keys: List[str] = ["object_id", "ra", "dec", "healpix"],
+    split: str = "train",
+    num_proc: int = 1,
+):
     """Return the catalog of a given Multimodal Universe parent sample.
 
     Args:
@@ -29,29 +42,36 @@ def get_catalog(dset: DatasetBuilder,
 
     Returns:
         astropy.table.Table: The catalog of the parent sample.
-        
+
     Raises:
         ValueError: If no data files are specified in the dataset builder.
     """
     if not dset.config.data_files:
-        raise ValueError(f"At least one data file must be specified, but got data_files={dset.config.data_files}")
+        raise ValueError(
+            f"At least one data file must be specified, but got data_files={dset.config.data_files}"
+        )
     catalogs = []
     if num_proc > 1:
         with Pool(num_proc) as pool:
-            catalogs = pool.map(partial(_file_to_catalog, keys=keys), dset.config.data_files[split])
+            catalogs = pool.map(
+                partial(_file_to_catalog, keys=keys), dset.config.data_files[split]
+            )
     else:
         for filename in dset.config.data_files[split]:
             catalogs.append(_file_to_catalog(filename, keys=keys))
     return vstack(catalogs)
 
-def cross_match_datasets(left : DatasetBuilder, 
-                         right : DatasetBuilder,
-                         cache_dir : str = None,
-                         keep_in_memory : bool = False,
-                         matching_radius : float = 1., 
-                         return_catalog_only : bool = False,
-                         num_proc : int = None):
-    """ Utility function to generate a new cross-matched dataset from two Multimodal Universe 
+
+def cross_match_datasets(
+    left: DatasetBuilder,
+    right: DatasetBuilder,
+    cache_dir: str = None,
+    keep_in_memory: bool = False,
+    matching_radius: float = 1.0,
+    return_catalog_only: bool = False,
+    num_proc: int = None,
+):
+    """Utility function to generate a new cross-matched dataset from two Multimodal Universe
     datasets.
 
     Args:
@@ -75,96 +95,140 @@ def cross_match_datasets(left : DatasetBuilder,
     """
     # Access the catalogs for both datasets
     cat_left = get_catalog(left)
-    cat_left['sc'] = SkyCoord(cat_left['ra'], 
-                              cat_left['dec'], unit='deg')
-    
+    cat_left["sc"] = SkyCoord(cat_left["ra"], cat_left["dec"], unit="deg")
+
     cat_right = get_catalog(right)
-    cat_right['sc'] = SkyCoord(cat_right['ra'],
-                               cat_right['dec'], unit='deg')
+    cat_right["sc"] = SkyCoord(cat_right["ra"], cat_right["dec"], unit="deg")
 
     # Cross match the catalogs and restricting them to matches
-    idx, sep2d, _ = cat_left['sc'].match_to_catalog_sky(cat_right['sc'])
-    mask = sep2d < matching_radius*u.arcsec
+    idx, sep2d, _ = cat_left["sc"].match_to_catalog_sky(cat_right["sc"])
+    mask = sep2d < matching_radius * u.arcsec
     cat_left = cat_left[mask]
     cat_right = cat_right[idx[mask]]
     assert len(cat_left) == len(cat_right), "There was an error in the cross-matching."
     print("Initial number of matches: ", len(cat_left))
-    matched_catalog = hstack([cat_left, cat_right], 
-                             table_names=[left.config.name, right.config.name],
-                             uniq_col_name='{table_name}_{col_name}')
+    matched_catalog = hstack(
+        [cat_left, cat_right],
+        table_names=[left.config.name, right.config.name],
+        uniq_col_name="{table_name}_{col_name}",
+    )
     # Remove objects that were matched between the two catalogs but fall under different healpix indices
-    mask = matched_catalog[f'{left.config.name}_healpix'] == matched_catalog[f'{right.config.name}_healpix']
+    mask = (
+        matched_catalog[f"{left.config.name}_healpix"]
+        == matched_catalog[f"{right.config.name}_healpix"]
+    )
     matched_catalog = matched_catalog[mask]
-    print("Number of matches lost at healpix region borders: ", len(cat_left) - len(matched_catalog))
+    print(
+        "Number of matches lost at healpix region borders: ",
+        len(cat_left) - len(matched_catalog),
+    )
     print("Final size of cross-matched catalog: ", len(matched_catalog))
 
     # Adding default columns to respect format
-    matched_catalog['object_id'] = matched_catalog[left.config.name+'_object_id']
-    matched_catalog['ra'] = 0.5*(matched_catalog[left.config.name+'_ra'] +
-                                 matched_catalog[right.config.name+'_ra'])
-    matched_catalog['dec'] = 0.5*(matched_catalog[left.config.name+'_dec'] +
-                                 matched_catalog[right.config.name+'_dec'])
-    
+    matched_catalog["object_id"] = matched_catalog[left.config.name + "_object_id"]
+    matched_catalog["ra"] = 0.5 * (
+        matched_catalog[left.config.name + "_ra"]
+        + matched_catalog[right.config.name + "_ra"]
+    )
+    matched_catalog["dec"] = 0.5 * (
+        matched_catalog[left.config.name + "_dec"]
+        + matched_catalog[right.config.name + "_dec"]
+    )
+
     # Check that all matches have the same healpix index
-    assert np.all(matched_catalog[left.config.name+'_healpix'] == matched_catalog[right.config.name+'_healpix']), "There was an error in the cross-matching."
-    matched_catalog['healpix'] = matched_catalog[left.config.name+'_healpix']
-    matched_catalog = matched_catalog.group_by(['healpix'])
+    assert np.all(
+        matched_catalog[left.config.name + "_healpix"]
+        == matched_catalog[right.config.name + "_healpix"]
+    ), "There was an error in the cross-matching."
+    matched_catalog["healpix"] = matched_catalog[left.config.name + "_healpix"]
+    matched_catalog = matched_catalog.group_by(["healpix"])
 
     if return_catalog_only:
         return matched_catalog
 
     # Retrieve the list of files of both datasets
-    files_left = left.config.data_files['train']
-    files_right = right.config.data_files['train']
+    files_left = left.config.data_files["train"]
+    files_right = right.config.data_files["train"]
     catalog_groups = [group for group in matched_catalog.groups]
+
     # Create a generator function that merges the two generators
     def _generate_examples(groups):
         for group in groups:
-            healpix = group['healpix'][0]
+            healpix = group["healpix"][0]
             generators = [
-                        # Build generators that only reads the files corresponding to the current healpix index
-                        left._generate_examples(
-                                        files=[files_left[[i for i in range(len(files_left)) if f'healpix={healpix}'in files_left[i]][0]]],
-                                        object_ids=[group[left.config.name+'_object_id']]),
-                        right._generate_examples(
-                                        files=[files_right[[i for i in range(len(files_right)) if f'healpix={healpix}'in files_right[i]][0]]],
-                                        object_ids=[group[right.config.name+'_object_id']])
-                    ]
+                # Build generators that only reads the files corresponding to the current healpix index
+                left._generate_examples(
+                    files=[
+                        files_left[
+                            [
+                                i
+                                for i in range(len(files_left))
+                                if f"healpix={healpix}" in files_left[i]
+                            ][0]
+                        ]
+                    ],
+                    object_ids=[group[left.config.name + "_object_id"]],
+                ),
+                right._generate_examples(
+                    files=[
+                        files_right[
+                            [
+                                i
+                                for i in range(len(files_right))
+                                if f"healpix={healpix}" in files_right[i]
+                            ][0]
+                        ]
+                    ],
+                    object_ids=[group[right.config.name + "_object_id"]],
+                ),
+            ]
             # Retrieve the generators for both datasets
             for i, examples in enumerate(zip(*generators)):
                 left_id, example_left = examples[0]
                 right_id, example_right = examples[1]
-                assert str(group[i][left.config.name+'_object_id']) in left_id, "There was an error in the cross-matching generation."
-                assert str(group[i][right.config.name+'_object_id']) in right_id, "There was an error in the cross-matching generation."
+                assert str(group[i][left.config.name + "_object_id"]) in left_id, (
+                    "There was an error in the cross-matching generation."
+                )
+                assert str(group[i][right.config.name + "_object_id"]) in right_id, (
+                    "There was an error in the cross-matching generation."
+                )
                 example_left.update(example_right)
                 yield example_left
-    
+
     # Merging the features of both datasets
     features = left.info.features.copy()
     features.update(right.info.features)
 
     # Generating a description for the new dataset based on the two parent datasets
-    description = (f"Cross-matched dataset between {left.info.builder_name}:{left.info.config_name} and {right.info.builder_name}:{left.info.config_name}.\nBelow are the original descriptions\n\n"
-                   f"{left.info.description}\n\n{right.info.description}")
-    
+    description = (
+        f"Cross-matched dataset between {left.info.builder_name}:{left.info.config_name} and {right.info.builder_name}:{left.info.config_name}.\nBelow are the original descriptions\n\n"
+        f"{left.info.description}\n\n{right.info.description}"
+    )
+
     # Create the new dataset
-    return Dataset.from_generator(_generate_examples,
-                                                   features,
-                                                   cache_dir=cache_dir,
-                                                   gen_kwargs={'groups':catalog_groups},
-                                                   num_proc=num_proc,
-                                                   keep_in_memory=keep_in_memory,
-                                                   description=description)
+    return Dataset.from_generator(
+        _generate_examples,
+        features,
+        cache_dir=cache_dir,
+        gen_kwargs={"groups": catalog_groups},
+        num_proc=num_proc,
+        keep_in_memory=keep_in_memory,
+        description=description,
+    )
 
 
 def extract_cat_params(cat: DatasetBuilder):
     """This just grabs the ra, dec, and healpix columns from a catalogue."""
     cat = get_catalog(cat)
-    subcat = pd.DataFrame(data=dict((col, cat[col].data) for col in ["ra", "dec", "healpix"]))
+    subcat = pd.DataFrame(
+        data=dict((col, cat[col].data) for col in ["ra", "dec", "healpix"])
+    )
     return subcat
 
 
-def build_master_catalog(cats: list[DatasetBuilder], names: list[str], matching_radius: float = 1.0):
+def build_master_catalog(
+    cats: list[DatasetBuilder], names: list[str], matching_radius: float = 1.0
+):
     """
     Build a master catalogue from a list of Multimodal Universe catalogues. This extracts
     minimal information from each catalogue and collates it into a single table.
@@ -207,7 +271,9 @@ def build_master_catalog(cats: list[DatasetBuilder], names: list[str], matching_
         cat = extract_cat_params(cat)
 
         # Match the catalogues
-        master_coords = SkyCoord(master_cat.loc[:, "ra"], master_cat.loc[:, "dec"], unit="deg")
+        master_coords = SkyCoord(
+            master_cat.loc[:, "ra"], master_cat.loc[:, "dec"], unit="deg"
+        )
         cat_coords = SkyCoord(cat.loc[:, "ra"], cat.loc[:, "dec"], unit="deg")
         idx, sep2d, _ = master_coords.match_to_catalog_sky(cat_coords)
         mask = sep2d < matching_radius * units.arcsec
@@ -238,7 +304,9 @@ def build_master_catalog(cats: list[DatasetBuilder], names: list[str], matching_
                 name_idx_data.append(idx[~mask])
         # Collect the new rows into a DataFrame
         append_cat = pd.DataFrame(
-            columns=["ra", "dec", "healpix"] + names + [f"{name}_idx" for name in names],
+            columns=["ra", "dec", "healpix"]
+            + names
+            + [f"{name}_idx" for name in names],
             data=np.stack(
                 [cat.loc[~mask, col] for col in ["ra", "dec", "healpix"]]
                 + name_data
