@@ -40,6 +40,7 @@ jobs:
       - name: Install dependencies if venv incomplete
         if: steps.cache-venv.outputs.cache-hit == 'true'
         run: |
+          rm -rf .venv
           uv venv .venv && source .venv/bin/activate && uv pip install '.[dev]'
       - name: run pytest
         run: |
