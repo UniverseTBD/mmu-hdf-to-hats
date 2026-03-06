@@ -163,21 +163,10 @@ class BTSbotTransformer(BaseTransformer):
         )
         scale_data = data["image_scale"][:]
 
-        band_arrays = [
-            [band_data[obj_idx] for _ in range(len(self.VIEWS))]
-            for obj_idx in range(n_objects)
-        ]
+        band_arrays = [[band_data[i], band_data[i], band_data[i]] for i in range(n_objects)]
         view_arrays = [self.VIEWS for _ in range(n_objects)]
-
-        # Create array data in storage format (list of list of lists for each 2D array)
-        array_arrays = [
-            [[row.tolist() for row in image_triplet[i, :, :, j]] for j in range(3)]
-            for i in range(n_objects)
-        ]
-
-        scale_arrays = [
-            [float(scale_data[i]) for _j in range(3)] for i in range(n_objects)
-        ]
+        array_arrays = [[[row.tolist() for row in image_triplet[i, :, :, j]] for j in range(3)] for i in range(n_objects)]
+        scale_arrays = [[float(scale_data[i]), float(scale_data[i]), float(scale_data[i])] for i in range(n_objects)]
 
         # Create Array2D extension type
         array_2d_type = Array2DExtensionType(shape=(self._image_size, self._image_size), dtype='float32')
