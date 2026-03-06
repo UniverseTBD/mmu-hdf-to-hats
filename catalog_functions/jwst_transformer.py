@@ -4,7 +4,6 @@ JWSTTransformer: Clean class-based transformation from HDF5 to PyArrow tables.
 
 import pyarrow as pa
 import numpy as np
-from datasets.features.features import Array2DExtensionType
 from catalog_functions.utils import BaseTransformer
 
 
@@ -22,24 +21,16 @@ class JWSTTransformer(BaseTransformer):
         "cxy_image",
     ]
 
-    # Default image size (can vary by config)
-    IMAGE_SIZE = 96
-
     def create_schema(self):
         """Create the output PyArrow schema."""
         fields = []
 
-        # Image as a struct with lists using Array2DExtensionType for 2D arrays
-        # This matches the datasets format: struct<band: list<string>, flux: list<Array2D>, ...>
-        arr2d_float = Array2DExtensionType((self.IMAGE_SIZE, self.IMAGE_SIZE), 'float32')
-        arr2d_bool = Array2DExtensionType((self.IMAGE_SIZE, self.IMAGE_SIZE), 'bool')
-        
         image_struct = pa.struct(
             [
                 pa.field("band", pa.list_(pa.string())),
-                pa.field("flux", pa.list_(arr2d_float)),  # list of 2D arrays
-                pa.field("ivar", pa.list_(arr2d_float)),  # list of 2D arrays
-                pa.field("mask", pa.list_(arr2d_bool)),  # list of 2D arrays
+                pa.field("flux", pa.list_(pa.list_(pa.list_(pa.float32())))),
+                pa.field("ivar", pa.list_(pa.list_(pa.list_(pa.float32())))),
+                pa.field("mask", pa.list_(pa.list_(pa.list_(pa.bool_())))),
                 pa.field("psf_fwhm", pa.list_(pa.float32())),
                 pa.field("scale", pa.list_(pa.float32())),
             ]
@@ -127,63 +118,40 @@ class JWSTTransformer(BaseTransformer):
             psf_fwhm_lists.append(psf_fwhms)
             scale_lists.append(scales)
 
-        # Create struct array with lists using Array2DExtensionType
-        arr2d_float = Array2DExtensionType((self.IMAGE_SIZE, self.IMAGE_SIZE), 'float32')
-        arr2d_bool = Array2DExtensionType((self.IMAGE_SIZE, self.IMAGE_SIZE), 'bool')
-        
         image_struct_type = pa.struct(
             [
                 pa.field("band", pa.list_(pa.string())),
-                pa.field("flux", pa.list_(arr2d_float)),
-                pa.field("ivar", pa.list_(arr2d_float)),
-                pa.field("mask", pa.list_(arr2d_bool)),
+                pa.field("flux", pa.list_(pa.list_(pa.list_(pa.float32())))),
+                pa.field("ivar", pa.list_(pa.list_(pa.list_(pa.float32())))),
+                pa.field("mask", pa.list_(pa.list_(pa.list_(pa.bool_())))),
                 pa.field("psf_fwhm", pa.list_(pa.float32())),
                 pa.field("scale", pa.list_(pa.float32())),
             ]
         )
 
-        # Create arrays with storage types first, then cast to extension types
-        # Storage type for Array2DExtensionType is list<list<dtype>>
-        storage_type_float = pa.list_(pa.list_(pa.float32()))
-        storage_type_bool = pa.list_(pa.list_(pa.bool_()))
-        
-        # Create with storage types
-        flux_storage = pa.array(flux_lists, type=pa.list_(storage_type_float))
-        ivar_storage = pa.array(ivar_lists, type=pa.list_(storage_type_float))
-        mask_storage = pa.array(mask_lists, type=pa.list_(storage_type_bool))
-        
-        # Cast to extension types
-        flux_ext = flux_storage.cast(pa.list_(arr2d_float))
-        ivar_ext = ivar_storage.cast(pa.list_(arr2d_float))
-        mask_ext = mask_storage.cast(pa.list_(arr2d_bool))
+        image_structs = []
+        for i in range(n_objects):
+            image_structs.append({
+                "band": band_lists[i],
+                "flux": flux_lists[i],
+                "ivar": ivar_lists[i],
+                "mask": mask_lists[i],
+                "psf_fwhm": psf_fwhm_lists[i],
+                "scale": scale_lists[i],
+            })
+        columns["image"] = pa.array(image_structs, type=image_struct_type)
 
-        image_structs = pa.StructArray.from_arrays(
-            [
-                pa.array(band_lists, type=pa.list_(pa.string())),
-                flux_ext,
-                ivar_ext,
-                mask_ext,
-                pa.array(psf_fwhm_lists, type=pa.list_(pa.float32())),
-                pa.array(scale_lists, type=pa.list_(pa.float32())),
-            ],
-            names=["band", "flux", "ivar", "mask", "psf_fwhm", "scale"],
-        )
-
-        columns["image"] = image_structs
-
-        # 2. Add float features
+        # 2. Add float features (convert from big-endian HDF5 to little-endian)
         for f in self.FLOAT_FEATURES:
-            columns[f] = pa.array(data[f][:].astype(np.float32))
+            columns[f] = pa.array(data[f][:].astype('<f4'))
 
         # 3. Add object_id
         columns["object_id"] = pa.array([str(oid) for oid in data["object_id"][:]])
 
         # 4. Add coordinates (ra, dec) - required for HATS
-        # Convert to native byte order (HDF5 data big-endian)
-        ra_data = data["ra"][:].astype(np.float64)
-        dec_data = data["dec"][:].astype(np.float64)
-        columns["ra"] = pa.array(ra_data, type=pa.float64())
-        columns["dec"] = pa.array(dec_data, type=pa.float64())
+        # Convert from big-endian HDF5 to little-endian
+        columns["ra"] = pa.array(data["ra"][:].astype('<f8'), type=pa.float64())
+        columns["dec"] = pa.array(data["dec"][:].astype('<f8'), type=pa.float64())
 
         # Create table with schema
         schema = self.create_schema()
