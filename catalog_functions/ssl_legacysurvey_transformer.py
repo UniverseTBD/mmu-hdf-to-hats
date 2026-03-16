@@ -5,7 +5,6 @@ SSLLegacySurveyTransformer: Clean class-based transformation from HDF5 to PyArro
 import pyarrow as pa
 import numpy as np
 from catalog_functions.utils import BaseTransformer
-from datasets.features.features import Array2DExtensionType
 
 
 class SSLLegacySurveyTransformer(BaseTransformer):
@@ -34,13 +33,11 @@ class SSLLegacySurveyTransformer(BaseTransformer):
         """Create the output PyArrow schema."""
         fields = []
 
-        array_2d_float = Array2DExtensionType(shape=(self.IMAGE_SIZE, self.IMAGE_SIZE), dtype='float32')
-
         # Image struct-of-lists (matching datasets Sequence behavior)
         image_struct = pa.struct(
             [
                 pa.field("band", pa.list_(pa.string())),
-                pa.field("flux", pa.list_(array_2d_float)),
+                pa.field("flux", pa.list_(pa.list_(pa.list_(pa.float32())))),
                 pa.field("psf_fwhm", pa.list_(pa.float32())),
                 pa.field("scale", pa.list_(pa.float32())),
             ]
@@ -88,9 +85,6 @@ class SSLLegacySurveyTransformer(BaseTransformer):
 
         band_arrays = pa.array([band_names_decoded] * n_objects, type=pa.list_(pa.string()))
 
-        # Build flux arrays with Array2D extension type (following HSC pattern)
-        array_2d_float = Array2DExtensionType(shape=(self.IMAGE_SIZE, self.IMAGE_SIZE), dtype='float32')
-
         flux_data = []
         for i in range(n_objects):
             obj_bands = []
@@ -98,10 +92,7 @@ class SSLLegacySurveyTransformer(BaseTransformer):
                 obj_bands.append([row for row in image_array[i, j]])
             flux_data.append(obj_bands)
 
-        storage_type = pa.list_(array_2d_float.storage_type)
-        storage_array = pa.array(flux_data, type=storage_type)
-        target_type = pa.list_(array_2d_float)
-        flux_arrays = storage_array.cast(target_type)
+        flux_arrays = pa.array(flux_data, type=pa.list_(pa.list_(pa.list_(pa.float32()))))
 
         # Scalar lists
         psf_fwhm_arrays = pa.array([row for row in image_psf_fwhm.astype(np.float32)], type=pa.list_(pa.float32()))
