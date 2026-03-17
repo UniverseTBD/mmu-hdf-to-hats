@@ -293,7 +293,7 @@ def main(argv=None):
 
     with Client(**client_kwargs) as client:
         LOGGER.info(f"Dask dashboard: {client.dashboard_link}")
-        #pipeline_with_client(import_args, client)
+        pipeline_with_client(import_args, client)
         generate_collection_summary(cmd_args)
 
 
