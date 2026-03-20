@@ -4,6 +4,7 @@ import argparse
 import importlib
 import logging
 import math
+from concurrent.futures import ThreadPoolExecutor
 from multiprocessing import cpu_count
 from pkgutil import walk_packages
 
@@ -238,10 +239,11 @@ def main(argv=None):
             output_artifact_name=cmd_args.name,
             output_path=cmd_args.output,
             tmp_dir=cmd_args.tmp_dir,
+            resume=True,
         )
         .catalog(
             input_file_list=input_files,
-            file_reader=MMUReader(chunk_mb=128, transform_klass=transformer_klass),
+            file_reader=MMUReader(chunk_mb=2048, transform_klass=transformer_klass),
             ra_column=cmd_args.ra,
             dec_column=cmd_args.dec,
             pixel_threshold=cmd_args.max_rows,
@@ -261,9 +263,9 @@ def main(argv=None):
     else:
         # Production mode: use multiple workers
         client_kwargs = {
-            "n_workers": 32,#min(8, cpu_count()), 
-            "threads_per_worker": 2,
-            "memory_limit": "48GB"
+            "n_workers": 32,
+            "threads_per_worker": 1,
+            "memory_limit": "5GB",
         }
         LOGGER.info(
             f"Running in PRODUCTION mode ({client_kwargs['n_workers']} workers)"
