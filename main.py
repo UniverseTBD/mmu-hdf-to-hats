@@ -248,7 +248,11 @@ def main(argv=None):
         )
     else:
         # Production mode: use multiple workers
-        client_kwargs = {"n_workers": min(8, cpu_count()), "threads_per_worker": 1, "memory_limit": "48G"}
+        client_kwargs = {
+            "n_workers": 32,#min(8, cpu_count()), 
+            "threads_per_worker": 2,
+            "memory_limit": "48GB"
+        }
         LOGGER.info(
             f"Running in PRODUCTION mode ({client_kwargs['n_workers']} workers)"
         )
