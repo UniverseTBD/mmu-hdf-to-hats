@@ -6,6 +6,7 @@ catalogs = [
     "sdss",
     "btsbot",
     "cfa",
+    "chandra",
     "csp",
     "des_y3_sne_ia",
     "desi",
@@ -99,6 +100,31 @@ catalog_data = {
     "yse": {
         "original-mmu": "data/MultimodalUniverse/v1/yse_with_coordinates/",
         "rewritten": "data/yse_hp584_transformed.parquet",
+    },
+    "jwst": {
+        "original-mmu": "data/MultimodalUniverse/v1/jwst_with_coordinates/",
+        "rewritten": "data/jwst_hp2245_transformed.parquet",
+    },
+    "plasticc": {
+        "original-mmu": "data/MultimodalUniverse/v1/plasticc_with_coordinates/",
+        "rewritten": "data/plasticc_hp1378_transformed.parquet",
+    },
+    "cfa": {
+        "original-mmu": "data/MultimodalUniverse/v1/cfa_with_coordinates/",
+        "rewritten": "data/cfa_hp0146_transformed.parquet",
+    },
+    "csp": {
+        "original-mmu": "data/MultimodalUniverse/v1/csp_with_coordinates/",
+        "rewritten": "data/csp_hp1113_transformed.parquet",
+        "allowed-mismatch-columns": "object_id,spec_class",  # these are transformed from <HDF5 dataset "spec_class": shape (), type "|S5"> to a string, same for object_id. I think we can live with this
+    },
+    "ssl_legacysurvey": {
+        "original-mmu": "data/MultimodalUniverse/v1/ssl_legacysurvey_with_coordinates/",
+        "rewritten": "data/ssl_legacysurvey_hp125_transformed.parquet",
+    },
+    "chandra": {
+        "original-mmu": "data/MultimodalUniverse/v1/chandra_with_coordinates/",
+        "rewritten": "data/chandra_hp1339_transformed.parquet",
     },
 }
 

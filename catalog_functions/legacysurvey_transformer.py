@@ -7,6 +7,7 @@ import numpy as np
 from PIL import Image
 import io
 from catalog_functions.utils import BaseTransformer
+from datasets.features.features import Array2DExtensionType
 
 
 class LegacySurveyTransformer(BaseTransformer):
@@ -39,6 +40,11 @@ class LegacySurveyTransformer(BaseTransformer):
         "SHAPE_E2",
         "X",
         "Y",
+    ]
+
+    DOUBLE_FEATURES = [
+        "ra",
+        "dec",
     ]
 
     IMAGE_SIZE = 160

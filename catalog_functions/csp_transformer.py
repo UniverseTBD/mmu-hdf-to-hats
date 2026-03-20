@@ -6,6 +6,13 @@ import pyarrow as pa
 import numpy as np
 from catalog_functions.utils import BaseTransformer
 
+def convert_scalar_col_if_bytes(col):
+    if col.dtype.kind == "S" and col.shape == ():
+        val = col
+    else:
+        val = col[()]
+    return val
+
 
 class CSPTransformer(BaseTransformer):
     """Transforms CSP-I DR3 HDF5 files to PyArrow tables with proper schema."""
@@ -16,10 +23,9 @@ class CSPTransformer(BaseTransformer):
     ]
 
     FLOAT_FEATURES = [
-        "ra",
-        "dec",
         "redshift",
     ]
+    DOUBLE_FEATURES = ["ra", "dec"]
 
     def create_schema(self):
         """Create the output PyArrow schema."""
@@ -39,6 +45,9 @@ class CSPTransformer(BaseTransformer):
         # Add all float features
         for f in self.FLOAT_FEATURES:
             fields.append(pa.field(f, pa.float32()))
+
+        for f in self.DOUBLE_FEATURES:
+            fields.append(pa.field(f, pa.float64()))
 
         # Add all string features
         for f in self.STR_FEATURES:
@@ -101,17 +110,20 @@ class CSPTransformer(BaseTransformer):
 
         # 2. Add float features (scalars in CSP)
         for f in self.FLOAT_FEATURES:
-            columns[f] = pa.array([float(data[f][:])], type=pa.float32())
+            columns[f] = pa.array([np.float32(data[f][()])], type=pa.float32())
+
+        for f in self.DOUBLE_FEATURES:
+            columns[f] = pa.array([np.float64(data[f][()])], type=pa.float64())
 
         # 3. Add string features (scalars in CSP)
         for f in self.STR_FEATURES:
-            val = data[f][()]
+            val = convert_scalar_col_if_bytes(data[f])
             if isinstance(val, bytes):
                 val = val.decode("utf-8")
             columns[f] = pa.array([str(val)])
 
         # 4. Add object_id (scalar in CSP)
-        oid = data["object_id"][()]
+        oid = convert_scalar_col_if_bytes(data["object_id"])
         if isinstance(oid, bytes):
             oid = oid.decode("utf-8")
         columns["object_id"] = pa.array([str(oid)])
