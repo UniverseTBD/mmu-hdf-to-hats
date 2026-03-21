@@ -40,6 +40,29 @@ uvx --from huggingface-hub hf upload-large-folder \
 
 Here is an example of the result dataset: https://huggingface.co/datasets/LSDB/mmu_sdss_sdss/tree/main
 
+# Generate HuggingFace Dataset Cards
+
+`./generate_readme.py` generates a HuggingFace Dataset Card (README.md) for a HATS collection hosted on HuggingFace. It reads collection metadata remotely — no need to download the dataset.
+
+```shell
+# Basic usage
+uv run python generate_readme.py https://huggingface.co/datasets/LSDB/mmu_sdss_sdss
+
+# With overrides
+uv run python generate_readme.py \
+  https://huggingface.co/datasets/LSDB/mmu_sdss_sdss \
+  --name "MMU SDSS" \
+  --output-dir ./readmes/
+```
+
+Then upload the generated card:
+
+```shell
+huggingface-cli upload LSDB/mmu_sdss_sdss ./readmes/README.md README.md --repo-type dataset
+```
+
+Run with `--help` to see all available options.
+
 # Debugging workflow
 Since dask is running in parallel it is notoriously hard to debug. In order to set breakpoints it's easiest to use only one runner, you can do that using the `debug` flag:
 ```bash
