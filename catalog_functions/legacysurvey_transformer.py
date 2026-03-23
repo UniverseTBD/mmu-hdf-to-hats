@@ -1,202 +1,78 @@
 """
-LegacySurveyTransformer: Transforms HDF5 to PyArrow tables matching datasets library format.
+LegacySurveyTransformer: Optimized transformation from HDF5 to PyArrow tables.
 """
 
-import pyarrow as pa
-import numpy as np
-from PIL import Image
 import io
+from concurrent.futures import ThreadPoolExecutor
+
+import numpy as np
+import pyarrow as pa
+from PIL import Image
+
 from catalog_functions.utils import BaseTransformer
-from datasets.features.features import Array2DExtensionType
+
+PNG_THREADS = 4
+
+
+def _encode_png(array: np.ndarray) -> bytes:
+    """Encode a numpy array as PNG bytes. PIL releases the GIL during zlib compression."""
+    buf = io.BytesIO()
+    Image.fromarray(array).save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def _arr_to_nested_list_array(arr: np.ndarray, leaf_type: pa.DataType) -> pa.Array:
+    """Convert an N-D numpy array to a nested pa.ListArray without Python loops.
+
+    Shape (d0, d1, ..., dn) → list<list<...<leaf_type>...>> of length d0.
+    Uses ListArray.from_arrays with precomputed offsets — zero Python objects created.
+    """
+    if arr.dtype.byteorder == ">":
+        arr = arr.byteswap().view(arr.dtype.newbyteorder("<"))
+    result = pa.array(arr.reshape(-1), type=leaf_type)
+    for size in reversed(arr.shape[1:]):
+        n_lists = len(result) // size
+        offsets = np.arange(n_lists + 1, dtype=np.int32) * size
+        result = pa.ListArray.from_arrays(offsets, result)
+    return result
+
+
+def _make_image_struct(byte_list: list) -> pa.StructArray:
+    """Build a HuggingFace-compatible {bytes, path} image struct array."""
+    return pa.StructArray.from_arrays(
+        [
+            pa.array(byte_list, type=pa.binary()),
+            pa.nulls(len(byte_list), type=pa.string()),
+        ],
+        names=["bytes", "path"],
+    )
 
 
 class LegacySurveyTransformer(BaseTransformer):
     """Transforms Legacy Survey HDF5 files to PyArrow tables matching datasets format."""
 
-    # Feature group definitions from legacysurvey.py
     FLOAT_FEATURES = [
         "EBV",
-        "FLUX_G",
-        "FLUX_R",
-        "FLUX_I",
-        "FLUX_Z",
-        "FLUX_W1",
-        "FLUX_W2",
-        "FLUX_W3",
-        "FLUX_W4",
-        "SHAPE_R",
-        "SHAPE_E1",
-        "SHAPE_E2",
+        "FLUX_G", "FLUX_R", "FLUX_I", "FLUX_Z",
+        "FLUX_W1", "FLUX_W2", "FLUX_W3", "FLUX_W4",
+        "SHAPE_R", "SHAPE_E1", "SHAPE_E2",
     ]
 
     CATALOG_FEATURES = [
-        "FLUX_G",
-        "FLUX_R",
-        "FLUX_I",
-        "FLUX_Z",
-        "TYPE",
-        "SHAPE_R",
-        "SHAPE_E1",
-        "SHAPE_E2",
-        "X",
-        "Y",
+        "FLUX_G", "FLUX_R", "FLUX_I", "FLUX_Z",
+        "TYPE", "SHAPE_R", "SHAPE_E1", "SHAPE_E2", "X", "Y",
     ]
 
-    DOUBLE_FEATURES = [
-        "ra",
-        "dec",
-    ]
-
+    DOUBLE_FEATURES = ["ra", "dec"]
     IMAGE_SIZE = 160
     BANDS = ["DES-G", "DES-R", "DES-I", "DES-Z"]
 
     def create_schema(self) -> pa.Schema:
-        """Create the output PyArrow schema matching datasets format."""
-        fields = []
-
-        array_2d_float = Array2DExtensionType(shape=(self.IMAGE_SIZE, self.IMAGE_SIZE), dtype='float32')
-        array_2d_bool = Array2DExtensionType(shape=(self.IMAGE_SIZE, self.IMAGE_SIZE), dtype='bool')
-
-        # Image struct with flattened lists (matching datasets Sequence behavior)
-        # {'band': List(Value('string')), 'flux': List(Array2D(...)), ...}
-        image_struct = pa.struct([
-            pa.field("band", pa.list_(pa.string())),
-            pa.field("flux", pa.list_(array_2d_float)),
-            pa.field("mask", pa.list_(array_2d_bool)),
-            pa.field("ivar", pa.list_(array_2d_float)),
-            pa.field("psf_fwhm", pa.list_(pa.float32())),
-            pa.field("scale", pa.list_(pa.float32())),
-        ])
-        fields.append(pa.field("image", image_struct))
-
-        # Image types - datasets stores as {'bytes': binary, 'path': string}
         image_type = pa.struct([
             pa.field("bytes", pa.binary()),
             pa.field("path", pa.string()),
         ])
-        fields.append(pa.field("blobmodel", image_type))
-        fields.append(pa.field("rgb", image_type))
-        fields.append(pa.field("object_mask", image_type))
-
-        # Catalog struct with flattened lists
-        # Note: TYPE becomes float32 in the catalog (matching the schema you showed)
-        catalog_struct = pa.struct([
-            pa.field("FLUX_G", pa.list_(pa.float32())),
-            pa.field("FLUX_R", pa.list_(pa.float32())),
-            pa.field("FLUX_I", pa.list_(pa.float32())),
-            pa.field("FLUX_Z", pa.list_(pa.float32())),
-            pa.field("TYPE", pa.list_(pa.float32())),  # datasets converts to float32
-            pa.field("SHAPE_R", pa.list_(pa.float32())),
-            pa.field("SHAPE_E1", pa.list_(pa.float32())),
-            pa.field("SHAPE_E2", pa.list_(pa.float32())),
-            pa.field("X", pa.list_(pa.float32())),
-            pa.field("Y", pa.list_(pa.float32())),
-        ])
-        fields.append(pa.field("catalog", catalog_struct))
-
-        # Add all float features
-        for f in self.FLOAT_FEATURES:
-            fields.append(pa.field(f, pa.float32()))
-
-        # Object ID
-        fields.append(pa.field("object_id", pa.string()))
-
-        # Coordinates (added by the processing step)
-        fields.append(pa.field("ra", pa.float64()))
-        fields.append(pa.field("dec", pa.float64()))
-
-        return pa.schema(fields)
-
-    def _array_to_image_bytes(self, array: np.ndarray) -> bytes:
-        """Convert numpy array to PNG bytes (matching datasets Image behavior)."""
-        # Ensure uint8
-        if array.dtype != np.uint8:
-            array = array.astype(np.uint8)
-        
-        # Create PIL Image
-        if array.ndim == 2:
-            img = Image.fromarray(array, mode='L')
-        elif array.ndim == 3:
-            if array.shape[2] == 3:
-                img = Image.fromarray(array, mode='RGB')
-            elif array.shape[2] == 4:
-                img = Image.fromarray(array, mode='RGBA')
-            else:
-                raise ValueError(f"Unexpected array shape: {array.shape}")
-        else:
-            raise ValueError(f"Unexpected array dimensions: {array.ndim}")
-        
-        # Convert to PNG bytes
-        buffer = io.BytesIO()
-        img.save(buffer, format='PNG')
-        return buffer.getvalue()
-
-    def dataset_to_table(self, data) -> pa.Table:
-        """
-        Convert HDF5 dataset to PyArrow table matching datasets library format.
-
-        Args:
-            data: HDF5 file or dict of datasets
-
-        Returns:
-            pa.Table: Transformed Arrow table
-        """
-        columns = {}
-        n_objects = len(data["object_id"][:])
-
-        # 1. Create image column (flattened lists within struct)
-        image_array = data["image_array"][:]
-        image_mask = data["image_mask"][:]
-        image_ivar = data["image_ivar"][:]
-        image_band = data["image_band"][:]
-        image_psf_fwhm = data["image_psf_fwhm"][:]
-        image_scale = data["image_scale"][:]
-
-        # Build flattened lists for each field
-        band_lists = []
-        flux_lists = []
-        mask_lists = []
-        ivar_lists = []
-        psf_fwhm_lists = []
-        scale_lists = []
-
-        for i in range(n_objects):
-            # Each object has a list of bands
-            bands = []
-            fluxes = []
-            ivars = []
-            psf_fwhms = []
-            scales = []
-
-            for j in range(len(self.BANDS)):
-                band = image_band[i][j]
-                if isinstance(band, bytes):
-                    band = band.decode("utf-8")
-                bands.append(band)
-
-                # 2D arrays as list of lists
-                flux_2d = image_array[i][j]
-                fluxes.append([row.tolist() for row in flux_2d])
-
-                ivar_2d = image_ivar[i][j]
-                ivars.append([row.tolist() for row in ivar_2d])
-
-                psf_fwhms.append(float(image_psf_fwhm[i][j]))
-                scales.append(float(image_scale[i][j]))
-
-            # Mask is shared across bands (2D array)
-            mask_2d = image_mask[i]
-            masks = [[row.tolist() for row in mask_2d]] * len(self.BANDS)
-
-            band_lists.append(bands)
-            flux_lists.append(fluxes)
-            mask_lists.append(masks)
-            ivar_lists.append(ivars)
-            psf_fwhm_lists.append(psf_fwhms)
-            scale_lists.append(scales)
-
-        # Create struct array for image
-        image_struct_type = pa.struct([
+        image_struct = pa.struct([
             pa.field("band", pa.list_(pa.string())),
             pa.field("flux", pa.list_(pa.list_(pa.list_(pa.float32())))),
             pa.field("mask", pa.list_(pa.list_(pa.list_(pa.bool_())))),
@@ -204,111 +80,97 @@ class LegacySurveyTransformer(BaseTransformer):
             pa.field("psf_fwhm", pa.list_(pa.float32())),
             pa.field("scale", pa.list_(pa.float32())),
         ])
-
-        image_structs = []
-        for i in range(n_objects):
-            image_structs.append({
-                "band": band_lists[i],
-                "flux": flux_lists[i],
-                "mask": mask_lists[i],
-                "ivar": ivar_lists[i],
-                "psf_fwhm": psf_fwhm_lists[i],
-                "scale": scale_lists[i],
-            })
-        columns["image"] = pa.array(image_structs, type=image_struct_type)
-
-        # 2. Add blobmodel, rgb, object_mask as Image type (bytes + path struct)
-        image_type = pa.struct([
-            pa.field("bytes", pa.binary()),
-            pa.field("path", pa.string()),
+        catalog_struct = pa.struct([
+            pa.field(f, pa.list_(pa.float32())) for f in self.CATALOG_FEATURES
+        ])
+        return pa.schema([
+            pa.field("image", image_struct),
+            pa.field("blobmodel", image_type),
+            pa.field("rgb", image_type),
+            pa.field("object_mask", image_type),
+            pa.field("catalog", catalog_struct),
+            *[pa.field(f, pa.float32()) for f in self.FLOAT_FEATURES],
+            pa.field("object_id", pa.string()),
+            pa.field("ra", pa.float64()),
+            pa.field("dec", pa.float64()),
         ])
 
-        blobmodel_data = data["blobmodel"][:]
-        blobmodel_structs = []
-        for img in blobmodel_data:
-            blobmodel_structs.append({
-                "bytes": self._array_to_image_bytes(img),
-                "path": None,
-            })
-        columns["blobmodel"] = pa.array(blobmodel_structs, type=image_type)
+    def dataset_to_table(self, data) -> pa.Table:
+        n = len(data["object_id"][:])
 
-        rgb_data = data["image_rgb"][:]
-        rgb_structs = []
-        for img in rgb_data:
-            rgb_structs.append({
-                "bytes": self._array_to_image_bytes(img),
-                "path": None,
-            })
-        columns["rgb"] = pa.array(rgb_structs, type=image_type)
+        # 1. Parallel PNG encoding for the 3 image types (blobmodel, rgb, object_mask).
+        #    All 3*n tasks submitted together; PIL releases GIL during zlib compression.
+        blobmodel_arrs = data["blobmodel"][:]           # (N, 160, 160, 3) uint8
+        rgb_arrs       = data["image_rgb"][:]           # (N, 160, 160, 3) uint8
+        omask_arrs     = data["object_mask"][:]         # (N, 160, 160) uint8
 
-        object_mask_data = data["object_mask"][:]
-        object_mask_structs = []
-        for img in object_mask_data:
-            object_mask_structs.append({
-                "bytes": self._array_to_image_bytes(img),
-                "path": None,
-            })
-        columns["object_mask"] = pa.array(object_mask_structs, type=image_type)
+        all_arrs = [*blobmodel_arrs, *rgb_arrs, *omask_arrs]
+        with ThreadPoolExecutor(max_workers=PNG_THREADS) as ex:
+            all_bytes = list(ex.map(_encode_png, all_arrs))
 
-        # 3. Add catalog (struct with flattened lists)
-        catalog_struct_type = pa.struct([
-            pa.field("FLUX_G", pa.list_(pa.float32())),
-            pa.field("FLUX_R", pa.list_(pa.float32())),
-            pa.field("FLUX_I", pa.list_(pa.float32())),
-            pa.field("FLUX_Z", pa.list_(pa.float32())),
-            pa.field("TYPE", pa.list_(pa.float32())),
-            pa.field("SHAPE_R", pa.list_(pa.float32())),
-            pa.field("SHAPE_E1", pa.list_(pa.float32())),
-            pa.field("SHAPE_E2", pa.list_(pa.float32())),
-            pa.field("X", pa.list_(pa.float32())),
-            pa.field("Y", pa.list_(pa.float32())),
-        ])
+        blobmodel_bytes = all_bytes[:n]
+        rgb_bytes       = all_bytes[n:2 * n]
+        omask_bytes     = all_bytes[2 * n:]
 
-        catalog_structs = []
-        for i in range(n_objects):
-            n_catalog_objects = len(data["catalog_FLUX_G"][i])
-            
-            # Build lists for this object's catalog
-            cat_entry = {
-                "FLUX_G": [float(data["catalog_FLUX_G"][i][j]) for j in range(n_catalog_objects)],
-                "FLUX_R": [float(data["catalog_FLUX_R"][i][j]) for j in range(n_catalog_objects)],
-                "FLUX_I": [float(data["catalog_FLUX_I"][i][j]) for j in range(n_catalog_objects)],
-                "FLUX_Z": [float(data["catalog_FLUX_Z"][i][j]) for j in range(n_catalog_objects)],
-                "SHAPE_R": [float(data["catalog_SHAPE_R"][i][j]) for j in range(n_catalog_objects)],
-                "SHAPE_E1": [float(data["catalog_SHAPE_E1"][i][j]) for j in range(n_catalog_objects)],
-                "SHAPE_E2": [float(data["catalog_SHAPE_E2"][i][j]) for j in range(n_catalog_objects)],
-                "X": [float(data["catalog_X"][i][j]) for j in range(n_catalog_objects)],
-                "Y": [float(data["catalog_Y"][i][j]) for j in range(n_catalog_objects)],
-            }
-            
-            # TYPE needs special handling - convert to float
-            type_values = []
-            for j in range(n_catalog_objects):
-                cat_type = data["catalog_TYPE"][i][j]
-                if isinstance(cat_type, bytes):
-                    # Convert string type to numeric
-                    cat_type = cat_type.decode("utf-8")
-                else:
-                    type_values.append(float(cat_type))
-            cat_entry["TYPE"] = type_values
-            
-            catalog_structs.append(cat_entry)
+        # 2. Vectorised image struct — no Python loops, no intermediate Python objects.
+        image_array  = data["image_array"][:]           # (N, B, H, W) float32
+        image_ivar   = data["image_ivar"][:]            # (N, B, H, W) float32
+        image_mask   = data["image_mask"][:]            # (N, H, W) bool
+        image_band   = data["image_band"][:]            # (N, B) bytes
+        psf_fwhm     = data["image_psf_fwhm"][:].astype(np.float32)  # (N, B)
+        scale        = data["image_scale"][:].astype(np.float32)     # (N, B)
 
-        columns["catalog"] = pa.array(catalog_structs, type=catalog_struct_type)
+        band_names  = [
+            b.decode("utf-8") if isinstance(b, bytes) else b
+            for b in image_band[0]
+        ]
+        n_bands     = len(band_names)
+        band_arr    = pa.ListArray.from_arrays(
+            np.arange(n + 1, dtype=np.int32) * n_bands,
+            pa.array(band_names * n, type=pa.string()),
+        )
 
-        # 4. Add float features
-        for f in self.FLOAT_FEATURES:
-            columns[f] = pa.array(data[f][:].astype(np.float32))
+        # Replicate the 2-D mask once per band: (N, H, W) → (N, B, H, W).
+        mask_tiled = np.ascontiguousarray(
+            np.tile(image_mask[:, np.newaxis, :, :], (1, n_bands, 1, 1))
+        )
 
-        # 5. Add object_id (skip TYPE at top level - it's only in catalog now based on schema)
-        columns["object_id"] = pa.array([str(oid) for oid in data["object_id"][:]])
+        image_struct_arr = pa.StructArray.from_arrays(
+            [
+                band_arr,
+                _arr_to_nested_list_array(image_array,  pa.float32()),
+                _arr_to_nested_list_array(mask_tiled,   pa.bool_()),
+                _arr_to_nested_list_array(image_ivar,   pa.float32()),
+                _arr_to_nested_list_array(psf_fwhm,     pa.float32()),
+                _arr_to_nested_list_array(scale,        pa.float32()),
+            ],
+            names=["band", "flux", "mask", "ivar", "psf_fwhm", "scale"],
+        )
 
-        # 6. Add ra/dec from the data
-        columns["ra"] = pa.array(data["ra"][:].astype(np.float64))
-        columns["dec"] = pa.array(data["dec"][:].astype(np.float64))
+        # 3. Vectorised catalog struct — (N, 20) arrays → list<float32> per field.
+        catalog_arr = pa.StructArray.from_arrays(
+            [
+                _arr_to_nested_list_array(
+                    data[f"catalog_{feat}"][:].astype(np.float32), pa.float32()
+                )
+                for feat in self.CATALOG_FEATURES
+            ],
+            names=self.CATALOG_FEATURES,
+        )
 
-        # Create table with schema
-        schema = self.create_schema()
-        table = pa.table(columns, schema=schema)
+        # 4. Assemble final table.
+        columns = {
+            "image":       image_struct_arr,
+            "blobmodel":   _make_image_struct(blobmodel_bytes),
+            "rgb":         _make_image_struct(rgb_bytes),
+            "object_mask": _make_image_struct(omask_bytes),
+            "catalog":     catalog_arr,
+            **{f: pa.array(data[f][:].astype(np.float32)) for f in self.FLOAT_FEATURES},
+            "object_id":   pa.array(
+                np.char.decode(data["object_id"][:], "utf-8"), type=pa.string()
+            ),
+            "ra":  pa.array(data["ra"][:].astype(np.float64)),
+            "dec": pa.array(data["dec"][:].astype(np.float64)),
+        }
 
-        return table
+        return pa.table(columns, schema=self.create_schema())

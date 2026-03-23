@@ -59,6 +59,7 @@ catalog_data = {
     "legacysurvey": {
         "original-mmu": "data/MultimodalUniverse/v1/legacysurvey_with_coordinates/",
         "rewritten": "data/legacysurvey_hp1981_transformed.parquet",
+        "allowed-mismatch-columns": "object_id",  # datasets keeps bytes b'...', we decode to str
     },
     "gz10": {
         "original-mmu": "data/MultimodalUniverse/v1/gz10_with_coordinates/",
