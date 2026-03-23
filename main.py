@@ -15,9 +15,10 @@ from hats_import import CollectionArguments
 from hats_import.catalog.file_readers import InputReader
 from hats_import.pipeline import pipeline_with_client
 from upath import UPath
+from hats.io.summary_file import write_collection_summary_file
 
 import catalog_functions
-from catalog_functions.utils import BaseTransformer
+from catalog_functions.utils import BaseTransformer, np_to_pyarrow_array
 
 LOGGER = logging.getLogger(__name__)
 
@@ -112,21 +113,32 @@ def parse_args(argv):
     return parser.parse_args(argv)
 
 
-def np_to_pyarrow_array(array: np.ndarray) -> pa.Array:
-    """Massively copy-pasted from hats_import.catalog.file_reader.fits._np_to_pyarrow_array
-    https://github.com/astronomy-commons/hats-import/blob/e9c7b647dae309ced9f9ce2916692c2aecde2612/src/hats_import/catalog/file_readers/fits.py#L9
-    """
-    if array.dtype.byteorder == '>':
-        array = array.byteswap().view(array.dtype.newbyteorder('<'))
-    values = pa.array(array.reshape(-1))
-    # "Base" type
-    if array.ndim == 1:
-        return values
-    if array.ndim > 2:
-        raise ValueError("Only 1D and 2D arrays are supported")
-    n_lists, length = array.shape
-    offsets = np.arange(0, (n_lists + 1) * length, length, dtype=np.int32)
-    return pa.ListArray.from_arrays(values=values, offsets=offsets)
+def generate_collection_summary(cmd_args):
+    """Generate README summary file for an existing HATS collection."""
+    collection_path = cmd_args.output / cmd_args.name
+    collection_properties = collection_path / "collection.properties"
+    if not collection_properties.exists():
+        raise FileNotFoundError(
+            f"No HATS collection found at {collection_path}. Missing {collection_properties.name}."
+        )
+
+    folder = "cards/"
+    (collection_path / folder).mkdir(parents=True, exist_ok=True)
+
+    summary_filename = f"{folder}dataset_card_{cmd_args.name}.md"
+
+    summary_path = write_collection_summary_file(
+        collection_path=collection_path,
+        fmt="markdown",
+        filename=summary_filename,
+        output_dir=None,
+        name=cmd_args.name,
+        description=None,
+        uri=None,
+        huggingface_metadata=False,
+        jinja2_template=None,
+    )
+    LOGGER.info(f"Collection summary written to: {summary_path}")
 
 
 class MMUReader(InputReader):
@@ -160,7 +172,10 @@ class MMUReader(InputReader):
         with upath.open("rb") as fh, h5py.File(fh) as h5_file:
             num_chunks = self._num_chunks(upath, h5_file, read_columns)
             if read_columns is None:
-                read_columns = list(h5_file)
+                read_columns = [
+                    key for key in h5_file.keys()
+                    if isinstance(h5_file[key], h5py.Dataset)
+                ]
             first_col_name = self._get_h5_column(h5_file, read_columns[0])
             shape = h5_file[first_col_name].shape
             if shape == ():
@@ -268,6 +283,7 @@ def main(argv=None):
     with Client(**client_kwargs) as client:
         LOGGER.info(f"Dask dashboard: {client.dashboard_link}")
         pipeline_with_client(import_args, client)
+        generate_collection_summary(cmd_args)
 
 
 if __name__ == "__main__":

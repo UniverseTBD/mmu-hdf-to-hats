@@ -14,6 +14,7 @@ dependencies = [
     "universal_pathlib",
     "click",
     "datasets",
+    "hats>=0.8.2",
 ]
 
 # add dev dependencies
