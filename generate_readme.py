@@ -106,7 +106,7 @@ def main():
     collection_path = f"hf://datasets/{org}/{repo}"
 
     name = args.name if args.name else repo
-    output_dir = Path(args.output_dir)
+    output_dir = Path(args.output_dir) / name
     output_dir.mkdir(parents=True, exist_ok=True)
 
     kwargs = {
@@ -119,8 +119,8 @@ def main():
     }
     if args.description:
         kwargs["description"] = args.description
-    if args.filename:
-        kwargs["filename"] = args.filename
+    
+    kwargs["filename"] = args.filename if args.filename else "README.md"
 
     output_path = write_collection_summary_file(**kwargs)
 
