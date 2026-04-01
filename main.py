@@ -12,6 +12,7 @@ import numpy as np
 import pyarrow as pa
 from dask.distributed import Client
 from hats_import import CollectionArguments
+from hats.io.summary_file import write_collection_summary_file
 from hats_import.catalog.file_readers import InputReader
 from hats_import.pipeline import pipeline_with_client
 from upath import UPath
@@ -110,6 +111,31 @@ def parse_args(argv):
         help="Row group size for parquet files. If not specified, uses PyArrow's default (min of table size and 1M rows). For image data, try 50-250.",
     )
     return parser.parse_args(argv)
+
+
+def generate_collection_summary(cmd_args):
+    """Generate README summary file for an existing HATS collection."""
+    collection_path = cmd_args.output / cmd_args.name
+    collection_properties = collection_path / "collection.properties"
+    if not collection_properties.exists():
+        raise FileNotFoundError(
+            f"No HATS collection found at {collection_path}. Missing {collection_properties.name}."
+        )
+
+    summary_filename = f"dataset_card_{cmd_args.name}.md"
+
+    summary_path = write_collection_summary_file(
+        collection_path=collection_path,
+        fmt="markdown",
+        filename=summary_filename,
+        output_dir=None,
+        name=cmd_args.name,
+        description=None,
+        uri=None,
+        huggingface_metadata=False,
+        jinja2_template=None,
+    )
+    LOGGER.info(f"Collection summary written to: {summary_path}")
 
 
 def np_to_pyarrow_array(array: np.ndarray) -> pa.Array:
@@ -268,6 +294,7 @@ def main(argv=None):
     with Client(**client_kwargs) as client:
         LOGGER.info(f"Dask dashboard: {client.dashboard_link}")
         pipeline_with_client(import_args, client)
+        generate_collection_summary(cmd_args)
 
 
 if __name__ == "__main__":
