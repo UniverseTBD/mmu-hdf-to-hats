@@ -72,6 +72,8 @@ The main HATS catalog contains the following columns:
 | **Minimum value** |  64871186081855 | Y | -0.0 | -8935484.0 | -0.0 | -0.0 | -9.0 | -0.0 | -0.0 | -64.7609 | AGN | 100000051 |
 | **Maximum value** |  3458741424076622916 | z | 60674.26171875 | 13675792.0 | 13791667.0 | 3.0 | 3.444999933242798 | 3.446000099182129 | 359.8242 | 4.1815 | TDE | 99999980 |
 
+"ra" and "dec" are random numbers and not real coordinates.
+
 
 "Nested" indicates whether the column is stored as a nested field inside another "struct" column.
 
