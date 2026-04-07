@@ -120,6 +120,7 @@ def np_to_pyarrow_array(array: np.ndarray) -> pa.Array:
     if array.dtype.byteorder == '>':
         array = array.byteswap().view(array.dtype.newbyteorder('<'))
     values = pa.array(array.reshape(-1))
+    # "Base" type
     if array.ndim == 1:
         return values
     if array.ndim > 2:
@@ -130,32 +131,23 @@ def np_to_pyarrow_array(array: np.ndarray) -> pa.Array:
 
 
 class MMUReader(InputReader):
-    def __init__(
-        self,
-        chunk_mb: float,
-        transformer=None,
-        transform_klass=None,
-    ):
+    def __init__(self, chunk_mb: float, transform_klass):
         super().__init__()
         self.chunk_bytes = chunk_mb * 1024 * 1024
-        if transformer is not None and transform_klass is not None:
-            raise ValueError("Pass either transformer or transform_klass, not both")
-        if transformer is None and transform_klass is None:
-            raise ValueError("transformer or transform_klass is required")
-        self.transformer = transformer if transformer is not None else transform_klass()
+        self.transform = transform_klass()
 
     def _get_h5_column(self, h5_file, col_name):
+        """Get column from HDF5 file, checking both cases for ra/dec."""
         if col_name in h5_file:
             return col_name
+        # Try uppercase for coordinate columns
         if col_name.lower() in ("ra", "dec"):
             upper_name = col_name.upper()
             if upper_name in h5_file:
                 return upper_name
-        raise KeyError(
-            f"Column '{col_name}' not found in HDF5 file. "
-            f"Available columns: {list(h5_file.keys())}"
-        )
-
+        raise KeyError(f"Column '{col_name}' not found in HDF5 file. "
+                      f"Available columns: {list(h5_file.keys())}")
+    
     def _num_chunks(self, upath, h5_file: h5py.File, columns: list[str] | None) -> int:
         if columns is None:
             size = upath.stat().st_size
@@ -181,10 +173,13 @@ class MMUReader(InputReader):
             for col in read_columns[1:]:
                 col_name = self._get_h5_column(h5_file, col)
                 shape = h5_file[col_name].shape
-                cols_scalar[col] = shape == ()
+                if shape == ():
+                    cols_scalar[col] = True
+                else:
+                    cols_scalar[col] = False
             chunk_size = max(1, n_rows // num_chunks)
             for i in range(0, n_rows, chunk_size):
-                if {col.lower() for col in read_columns} == {"ra", "dec"}:
+                if set([col.lower() for col in read_columns]) == set(["ra", "dec"]):
                     if cols_scalar[first_col_name]:
                         data = {
                             col: np_to_pyarrow_array(np.array([h5_file[self._get_h5_column(h5_file, col)][()]]))
@@ -195,19 +190,20 @@ class MMUReader(InputReader):
                             col: np_to_pyarrow_array(h5_file[self._get_h5_column(h5_file, col)][i : i + chunk_size])
                             for col in read_columns
                         }
-                    yield pa.table(data)
-                    continue
-
-                if cols_scalar[first_col_name]:
-                    data = h5_file
+                    table = pa.table(data)
+                    yield table
                 else:
-                    data = {}
-                    for col in read_columns:
-                        if cols_scalar[col]:
-                            data[col] = h5_file[col][()]
-                        else:
-                            data[col] = h5_file[col][i : i + chunk_size]
-                yield self.transformer.dataset_to_table(data)
+                    if cols_scalar[first_col_name]:
+                        data = h5_file
+                    else:
+                        data = {}
+                        for col in read_columns:
+                            if cols_scalar[col]:
+                                data[col] = h5_file[col][()]
+                            else:
+                                data[col] = h5_file[col][i : i + chunk_size]
+                    table = self.transform.dataset_to_table(data)
+                    yield table
 
 
 def input_file_list(path: UPath) -> list[str]:
@@ -229,7 +225,6 @@ def main(argv=None):
     cmd_args.tmp_dir.mkdir(parents=True, exist_ok=True)
 
     transformer_klass = get_transformer(cmd_args.transformer)
-    transformer = transformer_klass()
 
     input_files = input_file_list(cmd_args.input)
     if cmd_args.first_n is not None:
@@ -240,9 +235,11 @@ def main(argv=None):
         row_group_kwargs['num_rows'] = cmd_args.row_group_size
 
     if cmd_args.transformer == "manga":
-        file_reader = MangaGroupReader(chunk_mb=128, transformer=transformer)
+        file_reader = MangaGroupReader(
+            chunk_mb=128, transformer=transformer_klass()
+        )
     else:
-        file_reader = MMUReader(chunk_mb=128, transformer=transformer)
+        file_reader = MMUReader(chunk_mb=128, transform_klass=transformer_klass)
 
     import_args = (
         CollectionArguments(

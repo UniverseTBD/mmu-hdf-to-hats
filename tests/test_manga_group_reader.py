@@ -3,10 +3,8 @@ from __future__ import annotations
 import h5py
 import pyarrow as pa
 
-from catalog_functions.cfa_transformer import CFATransformer
 from catalog_functions.manga_transformer import MangaGroupReader
 from catalog_functions.utils import BaseTransformer
-from main import MMUReader
 
 
 class DummyGroupedTransformer(BaseTransformer):
