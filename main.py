@@ -105,6 +105,12 @@ def parse_args(argv):
         help="Enable debug mode (single worker, single thread, no separate processes)",
     )
     parser.add_argument(
+        "--workers",
+        default=None,
+        type=int,
+        help="Number of Dask workers to use in production mode. Defaults to min(8, cpu_count()). Ignored with --debug.",
+    )
+    parser.add_argument(
         "--row-group-size",
         default=None,
         type=int,
@@ -268,7 +274,8 @@ def main(argv=None):
         )
     else:
         # Production mode: use multiple workers
-        client_kwargs = {"n_workers": min(8, cpu_count()), "threads_per_worker": 1, "memory_limit": "48G"}
+        n_workers = cmd_args.workers or min(8, cpu_count())
+        client_kwargs = {"n_workers": min(n_workers, cpu_count()), "threads_per_worker": 1, "memory_limit": "48G"}
         LOGGER.info(
             f"Running in PRODUCTION mode ({client_kwargs['n_workers']} workers)"
         )
