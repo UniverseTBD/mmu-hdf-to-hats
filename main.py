@@ -17,6 +17,7 @@ from hats_import.pipeline import pipeline_with_client
 from upath import UPath
 
 import catalog_functions
+from catalog_functions.manga_transformer import MangaGroupReader
 from catalog_functions.utils import BaseTransformer
 
 LOGGER = logging.getLogger(__name__)
@@ -102,6 +103,12 @@ def parse_args(argv):
         "--debug",
         action="store_true",
         help="Enable debug mode (single worker, single thread, no separate processes)",
+    )
+    parser.add_argument(
+        "--workers",
+        default=None,
+        type=int,
+        help="Number of Dask workers to use in production mode. Defaults to min(8, cpu_count()). Ignored with --debug.",
     )
     parser.add_argument(
         "--row-group-size",
@@ -233,6 +240,13 @@ def main(argv=None):
     if cmd_args.row_group_size is not None:
         row_group_kwargs['num_rows'] = cmd_args.row_group_size
 
+    if cmd_args.transformer == "manga":
+        file_reader = MangaGroupReader(
+            chunk_mb=128, transformer=transformer_klass()
+        )
+    else:
+        file_reader = MMUReader(chunk_mb=128, transform_klass=transformer_klass)
+
     import_args = (
         CollectionArguments(
             output_artifact_name=cmd_args.name,
@@ -241,7 +255,7 @@ def main(argv=None):
         )
         .catalog(
             input_file_list=input_files,
-            file_reader=MMUReader(chunk_mb=128, transform_klass=transformer_klass),
+            file_reader=file_reader,
             ra_column=cmd_args.ra,
             dec_column=cmd_args.dec,
             pixel_threshold=cmd_args.max_rows,
@@ -260,7 +274,8 @@ def main(argv=None):
         )
     else:
         # Production mode: use multiple workers
-        client_kwargs = {"n_workers": min(8, cpu_count()), "threads_per_worker": 1, "memory_limit": "48G"}
+        n_workers = cmd_args.workers or min(8, cpu_count())
+        client_kwargs = {"n_workers": min(n_workers, cpu_count()), "threads_per_worker": 1, "memory_limit": "48G"}
         LOGGER.info(
             f"Running in PRODUCTION mode ({client_kwargs['n_workers']} workers)"
         )
