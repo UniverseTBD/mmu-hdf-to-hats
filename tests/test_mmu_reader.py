@@ -1,4 +1,4 @@
-from catalog_functions.readers import MMUReader
+from main import MMUReader
 from catalog_functions.csp_transformer import CSPTransformer
 from catalog_functions.cfa_transformer import CFATransformer
 

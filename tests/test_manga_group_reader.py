@@ -4,9 +4,9 @@ import h5py
 import pyarrow as pa
 
 from catalog_functions.cfa_transformer import CFATransformer
-from catalog_functions.manga_transformer import MaNGATransformer
-from catalog_functions.readers import MMUReader, MangaGroupReader
+from catalog_functions.manga_transformer import MangaGroupReader
 from catalog_functions.utils import BaseTransformer
+from main import MMUReader
 
 
 class DummyGroupedTransformer(BaseTransformer):
@@ -87,8 +87,3 @@ def test_manga_group_reader_chunks_by_group(tmp_path):
 
     assert len(tables) == 2
     assert [table.num_rows for table in tables] == [1, 1]
-
-
-def test_transformers_select_expected_readers():
-    assert isinstance(CFATransformer().build_reader(), MMUReader)
-    assert isinstance(MaNGATransformer().build_reader(), MangaGroupReader)

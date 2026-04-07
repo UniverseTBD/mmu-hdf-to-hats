@@ -60,8 +60,9 @@ MaNGA is different: each top-level key is an object group like `8726-1901`, and 
 That grouped layout works fine for the transformer itself, but it breaks the generic HDF5 reader used by
 the HATS import path because `hats-import` first asks the reader for only `ra` and `dec` during pixel mapping.
 
-To handle this cleanly, transformers can now provide their own reader via `build_reader()`.
-The default reader remains `MMUReader`, while `MaNGATransformer` uses `MangaGroupReader`, which:
+The current fix is intentionally minimal: `main.py` keeps using the generic `MMUReader` for flat catalogs,
+but switches to `MangaGroupReader` when `--transformer=manga`. `MangaGroupReader`, defined in
+`catalog_functions/manga_transformer.py`, does two MaNGA-specific things:
 
 - builds per-object scalar tables from grouped HDF5 files when only `ra` and `dec` are requested
 - passes grouped chunks through to the transformer for full-row conversion
