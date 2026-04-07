@@ -38,6 +38,12 @@ class BaseTransformer(ABC):
         """Transform HDF5 data (dict of arrays or h5py.File) to PyArrow table."""
         pass
 
+    def build_reader(self, chunk_mb: float = 128):
+        """Build the HATS input reader for this transformer."""
+        from catalog_functions.readers import MMUReader
+
+        return MMUReader(chunk_mb=chunk_mb, transformer=self)
+
     def transform_from_hdf5_file(self, hdf5_file_path: Union[str, Path, "UPath"]):
         with h5py.File(hdf5_file_path, "r") as data:
             return self.dataset_to_table(data)

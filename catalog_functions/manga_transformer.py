@@ -16,6 +16,11 @@ class MaNGATransformer(BaseTransformer):
     SPECTRUM_SIZE = 4563
     DOUBLE_FEATURES = ["ra", "dec"]
 
+    def build_reader(self, chunk_mb: float = 128):
+        from catalog_functions.readers import MangaGroupReader
+
+        return MangaGroupReader(chunk_mb=chunk_mb, transformer=self)
+
     def create_schema(self):
         """Create the output PyArrow schema."""
         fields = []

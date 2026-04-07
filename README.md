@@ -51,6 +51,45 @@ python ./main.py \
 
 Note that choosing a concrete healpix that is rather small (<1GB) speeds up the process a lot, since reading via HTTP is typically slower than from disk and depending on the individual connection.
 
+## MaNGA reader note
+
+Most MMU HDF5 catalogs in this repo are "flat" files with top-level datasets such as `ra` and `dec`.
+MaNGA is different: each top-level key is an object group like `8726-1901`, and scalar metadata such as
+`ra`, `dec`, and `object_id` live inside that group.
+
+That grouped layout works fine for the transformer itself, but it breaks the generic HDF5 reader used by
+the HATS import path because `hats-import` first asks the reader for only `ra` and `dec` during pixel mapping.
+
+To handle this cleanly, transformers can now provide their own reader via `build_reader()`.
+The default reader remains `MMUReader`, while `MaNGATransformer` uses `MangaGroupReader`, which:
+
+- builds per-object scalar tables from grouped HDF5 files when only `ra` and `dec` are requested
+- passes grouped chunks through to the transformer for full-row conversion
+
+### Manual MaNGA validation
+
+Download the sample used by the verification flow:
+
+```shell
+./verification/download_manga.sh
+```
+
+Run the HATS conversion through the main CLI:
+
+```shell
+python ./main.py \
+  --transformer=manga \
+  --input=./data/MultimodalUniverse/v1/manga/manga \
+  --output=./hats \
+  --name=mmu_manga_manga \
+  --tmp-dir=./tmp \
+  --max-rows=8192 \
+  --debug
+```
+
+For the single downloaded sample, the resulting catalog should complete successfully and
+`./hats/mmu_manga_manga/mmu_manga_manga/hats.properties` should report `hats_nrows=1`.
+
 ## Transformation classes
 
 The idea is to have one transformation class for each catalog. This class should follow a given structure as outlined in the `catalog_functions.base_transformer.BaseTransformer` class and override its abstract methods.

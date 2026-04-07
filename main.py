@@ -3,20 +3,16 @@
 import argparse
 import importlib
 import logging
-import math
 from multiprocessing import cpu_count
 from pkgutil import walk_packages
 
-import h5py
-import numpy as np
-import pyarrow as pa
 from dask.distributed import Client
 from hats_import import CollectionArguments
-from hats_import.catalog.file_readers import InputReader
 from hats_import.pipeline import pipeline_with_client
 from upath import UPath
 
 import catalog_functions
+from catalog_functions.readers import MMUReader
 from catalog_functions.utils import BaseTransformer
 
 LOGGER = logging.getLogger(__name__)
@@ -112,99 +108,6 @@ def parse_args(argv):
     return parser.parse_args(argv)
 
 
-def np_to_pyarrow_array(array: np.ndarray) -> pa.Array:
-    """Massively copy-pasted from hats_import.catalog.file_reader.fits._np_to_pyarrow_array
-    https://github.com/astronomy-commons/hats-import/blob/e9c7b647dae309ced9f9ce2916692c2aecde2612/src/hats_import/catalog/file_readers/fits.py#L9
-    """
-    if array.dtype.byteorder == '>':
-        array = array.byteswap().view(array.dtype.newbyteorder('<'))
-    values = pa.array(array.reshape(-1))
-    # "Base" type
-    if array.ndim == 1:
-        return values
-    if array.ndim > 2:
-        raise ValueError("Only 1D and 2D arrays are supported")
-    n_lists, length = array.shape
-    offsets = np.arange(0, (n_lists + 1) * length, length, dtype=np.int32)
-    return pa.ListArray.from_arrays(values=values, offsets=offsets)
-
-
-class MMUReader(InputReader):
-    def __init__(self, chunk_mb: float, transform_klass):
-        super().__init__()
-        self.chunk_bytes = chunk_mb * 1024 * 1024
-        self.transform = transform_klass()
-
-    def _get_h5_column(self, h5_file, col_name):
-        """Get column from HDF5 file, checking both cases for ra/dec."""
-        if col_name in h5_file:
-            return col_name
-        # Try uppercase for coordinate columns
-        if col_name.lower() in ("ra", "dec"):
-            upper_name = col_name.upper()
-            if upper_name in h5_file:
-                return upper_name
-        raise KeyError(f"Column '{col_name}' not found in HDF5 file. "
-                      f"Available columns: {list(h5_file.keys())}")
-    
-    def _num_chunks(self, upath, h5_file: h5py.File, columns: list[str] | None) -> int:
-        if columns is None:
-            size = upath.stat().st_size
-        else:
-            size = sum(h5_file[self._get_h5_column(h5_file, col)].nbytes for col in columns)
-        return max(1, int(math.ceil(size / self.chunk_bytes)))
-
-    def read(self, input_file: str, read_columns: list[str] | None = None):
-        upath = UPath(input_file)
-        cols_scalar = {}
-        with upath.open("rb") as fh, h5py.File(fh) as h5_file:
-            num_chunks = self._num_chunks(upath, h5_file, read_columns)
-            if read_columns is None:
-                read_columns = list(h5_file)
-            first_col_name = self._get_h5_column(h5_file, read_columns[0])
-            shape = h5_file[first_col_name].shape
-            if shape == ():
-                cols_scalar[read_columns[0]] = True
-                n_rows = 1
-            else:
-                cols_scalar[read_columns[0]] = False
-                n_rows = shape[0]
-            for col in read_columns[1:]:
-                col_name = self._get_h5_column(h5_file, col)
-                shape = h5_file[col_name].shape
-                if shape == ():
-                    cols_scalar[col] = True
-                else:
-                    cols_scalar[col] = False
-            chunk_size = max(1, n_rows // num_chunks)
-            for i in range(0, n_rows, chunk_size):
-                if set([col.lower() for col in read_columns]) == set(["ra", "dec"]):
-                    if cols_scalar[first_col_name]:
-                        data = {
-                            col: np_to_pyarrow_array(np.array([h5_file[self._get_h5_column(h5_file, col)][()]]))
-                            for col in read_columns
-                        }
-                    else:
-                        data = {
-                            col: np_to_pyarrow_array(h5_file[self._get_h5_column(h5_file, col)][i : i + chunk_size])
-                            for col in read_columns
-                        }
-                    table = pa.table(data)
-                    yield table
-                else:
-                    if cols_scalar[first_col_name]:
-                        data = h5_file
-                    else:
-                        data = {}
-                        for col in read_columns:
-                            if cols_scalar[col]:
-                                data[col] = h5_file[col][()]
-                            else:
-                                data[col] = h5_file[col][i : i + chunk_size]
-                    table = self.transform.dataset_to_table(data)
-                    yield table
-
-
 def input_file_list(path: UPath) -> list[str]:
     suffixes = {".h5", ".hdf5"}
     path_list = sorted(p for p in path.rglob("*.h*5") if p.suffix in suffixes)
@@ -224,6 +127,7 @@ def main(argv=None):
     cmd_args.tmp_dir.mkdir(parents=True, exist_ok=True)
 
     transformer_klass = get_transformer(cmd_args.transformer)
+    transformer = transformer_klass()
 
     input_files = input_file_list(cmd_args.input)
     if cmd_args.first_n is not None:
@@ -241,7 +145,7 @@ def main(argv=None):
         )
         .catalog(
             input_file_list=input_files,
-            file_reader=MMUReader(chunk_mb=128, transform_klass=transformer_klass),
+            file_reader=transformer.build_reader(chunk_mb=128),
             ra_column=cmd_args.ra,
             dec_column=cmd_args.dec,
             pixel_threshold=cmd_args.max_rows,
