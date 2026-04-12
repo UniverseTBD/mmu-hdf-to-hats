@@ -15,6 +15,10 @@ size_categories:
 
 This is the collection of HATS catalogs representing mmu_tess_spoc.
 
+This dataset is part of the [Multimodal Universe](https://github.com/MultimodalUniverse/MultimodalUniverse),
+a large-scale collection of multimodal astronomical data. For full details, see the paper:
+[The Multimodal Universe: Enabling Large-Scale Machine Learning with 100TBs of Astronomical Scientific Data](https://arxiv.org/abs/2412.02527).
+
 ### Access the catalog
 
 We recommend the use of the [LSDB](https://lsdb.io) Python framework to access HATS catalogs.
