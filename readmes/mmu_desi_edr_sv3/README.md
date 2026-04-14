@@ -101,3 +101,20 @@ print(crossmatched)
 ```
 
 See the [LSDB documentation](https://docs.lsdb.io/) for more details on crossmatching and other operations.
+
+### Dataset-specific context
+
+**Original survey**  
+This dataset is based on the [Dark Energy Spectroscopic Instrument (DESI)](https://www.desi.lbl.gov/), specifically the Early Data Release (EDR), which represents about 1% of the final survey. DESI collects spectra of millions of galaxies, quasars, and stars to measure the effect of dark energy on the expansion of the universe.
+
+**Data modality**  
+The dataset consists of spectra with a fixed wavelength range from 3,600 to 9,800 and 7,081 pixels per sample. Each spectrum includes flux, wavelength, and inverse variance (ivar).
+
+**Typical use cases**  
+The dataset can be used to analyze spectra of galaxies, quasars, and stars. Existing applications include multimodal representation learning (AstroCLIP) and outlier detection using spectrum auto-encoding models.
+
+**Caveats**  
+The dataset is based on the DESI Early Data Release (EDR), which represents 1% of the final survey. It includes only primary spectra for each object, targets (excluding sky and other object types), and fibers with good status.
+
+**Citation**  
+Users should cite the DESI Early Data Release and acknowledge the DESI collaboration. The dataset is released under the CC BY 4.0 license, requiring attribution to the original authors.

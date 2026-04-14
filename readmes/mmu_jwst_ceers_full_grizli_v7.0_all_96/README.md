@@ -101,3 +101,20 @@ print(crossmatched)
 ```
 
 See the [LSDB documentation](https://docs.lsdb.io/) for more details on crossmatching and other operations.
+
+### Dataset-specific context
+
+**Original survey**  
+This dataset is based on the James Webb Space Telescope (JWST) NIRCam observations from early deep field surveys.
+
+**Data modality**  
+The dataset consists of fixed-size image cutouts (96×96 pixels) centered on sources from photometric catalogs. The images are multi-band, with 6 or 7 filters covering wavelengths from approximately 0.9μm to 4.4μm.
+
+**Typical use cases**  
+Images from these JWST deep field surveys have been used in a large number of scientific publications, including machine learning applications.
+
+**Caveats**  
+Different surveys have different wavelength coverage, and missing bands are represented as arrays of zeros to simplify data loading.
+
+**Citation**  
+The data are in the public domain. The dataset uses data products retrieved from the Dawn JWST Archive (DJA), an initiative of the Cosmic Dawn Center (DAWN).

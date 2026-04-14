@@ -101,3 +101,21 @@ print(crossmatched)
 ```
 
 See the [LSDB documentation](https://docs.lsdb.io/) for more details on crossmatching and other operations.
+
+### Dataset-specific context
+
+**Original survey**  
+This dataset is based on the [Gaia mission](https://www.cosmos.esa.int/gaia), specifically Data Release 3 (DR3). Gaia is designed to measure the astrometry of stars in the Milky Way, including positions, parallaxes, and proper motions, along with additional measurements such as photometry, physical parameters, and spectra.
+
+**Data modality**  
+The dataset is multimodal and includes stellar spectra, astrometric measurements (such as positions, parallaxes, and proper motions), photometry (magnitudes and fluxes), photometrically-estimated stellar parameters (e.g., distance, surface
+gravity, metallicity, surface temperature) , and radial velocities, along with associated uncertainties and quality flags.
+
+**Typical use cases**  
+The dataset has been widely used in Milky Way science and machine learning applications, including identifying non-axisymmetric features in the Galactic disc, constructing chemodynamical maps, and training models to generate stellar spectra, estimate physical parameters, and inpaint missing spectral regions.
+
+**Caveats**  
+The dataset includes a subset of 220 million stars from DR3 for which BP/RP spectra are available, rather than the full set of nearly 2 billion sources.
+
+**Citation**  
+Users should acknowledge the [European Space Agency (ESA) Gaia mission](https://www.cosmos.esa.int/gaia) and the Gaia Data Processing and Analysis Consortium (DPAC). The data are open and free to use provided appropriate credit is given.

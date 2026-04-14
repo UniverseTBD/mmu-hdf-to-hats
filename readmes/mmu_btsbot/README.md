@@ -98,3 +98,20 @@ print(crossmatched)
 ```
 
 See the [LSDB documentation](https://docs.lsdb.io/) for more details on crossmatching and other operations.
+
+### Dataset-specific context
+
+**Original survey**  
+This dataset comes from the [Zwicky Transient Facility (ZTF)](https://www.ztf.caltech.edu/), specifically the [Bright Transient Survey (BTS)](https://sites.astro.caltech.edu/ztf/bts/), which scans the Northern sky every 2–3 nights to detect and study bright, nearby transient events.
+
+**Data modality**  
+The dataset is multimodal, combining image triplets (*science*, *reference*, and *difference*) with tabular metadata containing extracted features of each transient candidate.
+
+**Typical use cases**  
+It is mainly used for detecting and classifying astrophysical transients, particularly distinguishing real events from bogus detections and supporting follow-up observations. The dataset was also used to develop the BTSbot model described in the [original paper](https://arxiv.org/abs/2401.15167).
+
+**Caveats**  
+Each sample corresponds to an alert rather than a unique object, so the same transient may appear multiple times. Early detections are typically noisier and harder to classify, and the dataset is biased toward bright, local transients matching BTS selection criteria.
+
+**Citation**  
+Users should cite the ZTF/BTS survey and the BTSbot paper. The dataset is released under the CC BY 4.0 license, requiring attribution to the original authors.

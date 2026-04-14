@@ -101,3 +101,20 @@ print(crossmatched)
 ```
 
 See the [LSDB documentation](https://docs.lsdb.io/) for more details on crossmatching and other operations.
+
+### Dataset-specific context
+
+**Original survey**  
+This dataset is based on the Sloan Digital Sky Survey (SDSS), which has mapped a large portion of the sky using a dedicated optical telescope. It includes data from multiple SDSS programs, including the Legacy survey, SEGUE-1, SEGUE-2, BOSS, and eBOSS surveys.
+
+**Data modality**  
+The dataset consists of optical spectra covering wavelength ranges from 3800 to 9200 (SDSS spectrograph) and 3650 to 10400 (BOSS spectrograph). Each spectrum includes flux measurements, wavelength values, and inverse variance (ivar), along with pixel-level masks indicating potential quality issues. The dataset contains approximately 4 million spectra.
+
+**Typical use cases**  
+SDSS spectra have been used in numerous scientific publications. Machine learning applications include building data-driven representations of galaxy spectra and identifying outliers.
+
+**Caveats**  
+The dataset includes spectra of varying lengths. It also applies selection cuts, including avoiding duplicate spectra for the same object, keeping only good-quality plates, and selecting only science targets.
+
+**Citation**  
+SDSS data releases are in the public domain. Users should include the appropriate acknowledgements for the SDSS, SEGUE-1, SEGUE-2, BOSS, and eBOSS samples when using this dataset.

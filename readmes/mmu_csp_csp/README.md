@@ -1,8 +1,19 @@
 
+---
+configs:
+- config_name: default
+  data_dir: mmu_csp_csp/dataset
+tags:
+- astronomy
+license: cc-by-4.0
+pretty_name: mmu_csp_csp
+size_categories:
+- n<1K
+---
 
-# mmu_csp HATS Catalog Collection
+# mmu_csp_csp HATS Catalog Collection
 
-This is the collection of HATS catalogs representing mmu_csp.
+This is the collection of HATS catalogs representing mmu_csp_csp.
 
 This dataset is part of the [Multimodal Universe](https://github.com/MultimodalUniverse/MultimodalUniverse),
 a large-scale collection of multimodal astronomical data. For full details, see the paper:
@@ -19,10 +30,10 @@ The following code provides a minimal example of opening this catalog:
 import lsdb
 
 # Full sky coverage.
-catalog = lsdb.open_catalog("<PATH>")
+catalog = lsdb.open_catalog("https://huggingface.co/datasets/UniverseTBD/mmu_csp_csp")
 # One-degree cone.
 catalog = lsdb.open_catalog(
-    "<PATH>",
+    "https://huggingface.co/datasets/UniverseTBD/mmu_csp_csp",
     search_filter=lsdb.ConeSearch(ra=139.0, dec=30.0, radius_arcsec=3600.0),
 )
 ```
@@ -33,14 +44,14 @@ Each catalog in this collection is represented as a separate [Apache Parquet dat
 
 This catalog is represented by the following files and directories:
 
-- [`collection.properties`](<PATH>/collection.properties) — textual metadata file describing the HATS collection of catalogs
-- [`mmu_csp`](mmu_csp) — main HATS catalog directory
-  - [`dataset/`](mmu_csp/dataset/) — Apache Parquet dataset directory for the main catalog
+- [`collection.properties`](https://huggingface.co/datasets/UniverseTBD/mmu_csp_csp/collection.properties) � textual metadata file describing the HATS collection of catalogs
+- [`mmu_csp_csp`](https://huggingface.co/datasets/UniverseTBD/mmu_csp_csp/mmu_csp_csp) � main HATS catalog directory
+  - [`dataset/`](https://huggingface.co/datasets/UniverseTBD/mmu_csp_csp/mmu_csp_csp/dataset/) � Apache Parquet dataset directory for the main catalog
     - ... parquet metadata and data files in sub directories ...
-  - [`hats.properties`](mmu_csp/hats.properties) — textual metadata file describing the main HATS catalog
-  - [`partition_info.csv`](mmu_csp/partition_info.csv) — CSV file with a list of catalog HEALPix tiles (catalog partitions)
-  - [`skymap.fits`](mmu_csp/skymap.fits) — HEALPix skymap FITS file with row-counts per HEALPix tile of fixed order 10
-- [`mmu_csp_10arcs/`](mmu_csp_10arcs) — default margin catalog to ensure data completeness in cross-matching, the margin threshold is 10.0 arcseconds
+  - [`hats.properties`](https://huggingface.co/datasets/UniverseTBD/mmu_csp_csp/mmu_csp_csp/hats.properties) � textual metadata file describing the main HATS catalog
+  - [`partition_info.csv`](https://huggingface.co/datasets/UniverseTBD/mmu_csp_csp/mmu_csp_csp/partition_info.csv) � CSV file with a list of catalog HEALPix tiles (catalog partitions)
+  - [`skymap.fits`](https://huggingface.co/datasets/UniverseTBD/mmu_csp_csp/mmu_csp_csp/skymap.fits) � HEALPix skymap FITS file with row-counts per HEALPix tile of fixed order 10
+- [`mmu_csp_csp_10arcs/`](https://huggingface.co/datasets/UniverseTBD/mmu_csp_csp/mmu_csp_csp_10arcs) � default margin catalog to ensure data completeness in cross-matching, the margin threshold is 10.0 arcseconds
   - ... margin catalog files and directories ...
 
 ### Catalog metadata
@@ -49,7 +60,7 @@ Metadata of the main HATS catalog, excluding margins and indexes:
 
 | **Number of rows** | **Number of columns** | **Number of partitions** | **Size on disk** | **HATS Builder** |
 | --- | --- | --- | --- | --- |
-| 134 | 6 | 122 | 794.0 KiB | hats-import v0.9.0, hats v0.9.0 |
+| 134 | 6 | 122 | 192.8 MiB | hats-import v0.7.3, hats v0.7.3 |
 
 
 ### Catalog columns
@@ -59,9 +70,9 @@ The main HATS catalog contains the following columns:
 | **Name** |  **`_healpix_29`** | **`lightcurve.band`** | **`lightcurve.time`** | **`lightcurve.mag`** | **`lightcurve.mag_err`** | **`redshift`** | **`ra`** | **`dec`** | **`spec_class`** | **`object_id`** |
 | --- |  --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | **Data Type** |  int64 | list[string] | list[float] | list[float] | list[float] | float | double | double | string | string |
-| **Nested?** |  — | lightcurve | lightcurve | lightcurve | lightcurve | — | — | — | — | — |
+| **Nested?** |  � | lightcurve | lightcurve | lightcurve | lightcurve | � | � | � | � | � |
 | **Value count** |  134 | 36,120 | 36,120 | 36,120 | 36,120 | 134 | 134 | 134 | 134 | 134 |
-| **Example row** |  349459259295784838 | [B, B, B, B, B, B, B, B, B, B, B, … (144 total)] | [1938, 1939, 1943, 1946, 1947, … (144 total)] | [16.01, 15.93, 15.78, 15.85, 15.89, … (144 total)] | [0.007, 0.007, 0.007, 0.007, 0.007, … (144 total)] | 0.0211 | 138.8 | 29.74 | SN Ia | SN2009cz |
+| **Example row** |  349459259295784838 | [B, B, B, B, B, B, B, B, B, B, B, � (144 total)] | [1938, 1939, 1943, 1946, 1947, � (144 total)] | [16.01, 15.93, 15.78, 15.85, 15.89, � (144 total)] | [0.007, 0.007, 0.007, 0.007, 0.007, � (144 total)] | 0.0211 | 138.8 | 29.74 | SN Ia | SN2009cz |
 | **Minimum value** |  70274246734234 | B | -0.0 | -0.0 | -0.0 | 0.003700000001117587 | 1.0079580545425415 | -80.17755889892578 | SN Ia | SN2004dt |
 | **Maximum value** |  3410168382924176502 | u | 2305.530029296875 | 22.347000122070312 | 0.20000000298023224 | 0.08349999785423279 | 359.6354064941406 | 29.735305786132812 | SN Ia | SN2010ae |
 
@@ -73,3 +84,20 @@ The main HATS catalog contains the following columns:
 
 
 
+
+### Crossmatch with another catalog
+
+HATS catalogs can be efficiently crossmatched using [LSDB](https://lsdb.io),
+which leverages the HEALPix partitioning to avoid loading the full datasets into memory:
+
+```python
+import lsdb
+
+mmu_csp_csp = lsdb.open_catalog("https://huggingface.co/datasets/UniverseTBD/mmu_csp_csp")
+other = lsdb.open_catalog("https://huggingface.co/datasets/<org>/<other_catalog>")
+
+crossmatched = mmu_csp_csp.crossmatch(other, radius_arcsec=1.0)
+print(crossmatched)
+```
+
+See the [LSDB documentation](https://docs.lsdb.io/) for more details on crossmatching and other operations.

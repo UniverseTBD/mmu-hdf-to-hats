@@ -103,3 +103,22 @@ print(crossmatched)
 ```
 
 See the [LSDB documentation](https://docs.lsdb.io/) for more details on crossmatching and other operations.
+
+### Dataset-specific context
+
+**Original survey**  
+The PLAsTiCC dataset is a collection of simulated light curves from the Photometric LSST Astronomical Time-Series Classification Challenge, designed to match the expected characteristics of the Legacy Survey of Space and Time (LSST). 
+
+It includes 14 types of time-varying astronomical objects, broadly divided into two categories: transients (short-lived events such as supernovae) and variable sources (objects with fluctuating brightness such as pulsating stars).
+
+**Data modality**  
+The dataset consists of time-series data (light curves) including time of observation, flux, flux error, and filter information. Observations are provided in six filters (u, g, r, i, z, Y). Each time series is also associated with a class label and a redshift.
+
+**Typical use cases**  
+The dataset has been widely used to develop and test models for supernova classification.
+
+**Caveats**  
+The dataset consists of simulated light curves generated using the expected instrument characteristics and survey strategy of LSST.
+
+**Citation**  
+The dataset is released under the CC BY 4.0 license and can be cited using its DOI: [10.5281/zenodo.2539456](https://doi.org/10.5281/zenodo.2539456).

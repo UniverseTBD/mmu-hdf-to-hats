@@ -44,14 +44,14 @@ Each catalog in this collection is represented as a separate [Apache Parquet dat
 
 This catalog is represented by the following files and directories:
 
-- [`collection.properties`](https://huggingface.co/datasets/LSDB/mmu_vipers_w4/collection.properties) — textual metadata file describing the HATS collection of catalogs
-- [`mmu_vipers_w4`](https://huggingface.co/datasets/LSDB/mmu_vipers_w4/mmu_vipers_w4) — main HATS catalog directory
-  - [`dataset/`](https://huggingface.co/datasets/LSDB/mmu_vipers_w4/mmu_vipers_w4/dataset/) — Apache Parquet dataset directory for the main catalog
+- [`collection.properties`](https://huggingface.co/datasets/LSDB/mmu_vipers_w4/collection.properties) � textual metadata file describing the HATS collection of catalogs
+- [`mmu_vipers_w4`](https://huggingface.co/datasets/LSDB/mmu_vipers_w4/mmu_vipers_w4) � main HATS catalog directory
+  - [`dataset/`](https://huggingface.co/datasets/LSDB/mmu_vipers_w4/mmu_vipers_w4/dataset/) � Apache Parquet dataset directory for the main catalog
     - ... parquet metadata and data files in sub directories ...
-  - [`hats.properties`](https://huggingface.co/datasets/LSDB/mmu_vipers_w4/mmu_vipers_w4/hats.properties) — textual metadata file describing the main HATS catalog
-  - [`partition_info.csv`](https://huggingface.co/datasets/LSDB/mmu_vipers_w4/mmu_vipers_w4/partition_info.csv) — CSV file with a list of catalog HEALPix tiles (catalog partitions)
-  - [`skymap.fits`](https://huggingface.co/datasets/LSDB/mmu_vipers_w4/mmu_vipers_w4/skymap.fits) — HEALPix skymap FITS file with row-counts per HEALPix tile of fixed order 10
-- [`mmu_vipers_w4_10arcs/`](https://huggingface.co/datasets/LSDB/mmu_vipers_w4/mmu_vipers_w4_10arcs) — default margin catalog to ensure data completeness in cross-matching, the margin threshold is 10.0 arcseconds
+  - [`hats.properties`](https://huggingface.co/datasets/LSDB/mmu_vipers_w4/mmu_vipers_w4/hats.properties) � textual metadata file describing the main HATS catalog
+  - [`partition_info.csv`](https://huggingface.co/datasets/LSDB/mmu_vipers_w4/mmu_vipers_w4/partition_info.csv) � CSV file with a list of catalog HEALPix tiles (catalog partitions)
+  - [`skymap.fits`](https://huggingface.co/datasets/LSDB/mmu_vipers_w4/mmu_vipers_w4/skymap.fits) � HEALPix skymap FITS file with row-counts per HEALPix tile of fixed order 10
+- [`mmu_vipers_w4_10arcs/`](https://huggingface.co/datasets/LSDB/mmu_vipers_w4/mmu_vipers_w4_10arcs) � default margin catalog to ensure data completeness in cross-matching, the margin threshold is 10.0 arcseconds
   - ... margin catalog files and directories ...
 
 ### Catalog metadata
@@ -70,9 +70,9 @@ The main HATS catalog contains the following columns:
 | **Name** |  **`_healpix_29`** | **`spectrum.flux`** | **`spectrum.ivar`** | **`spectrum.lambda`** | **`spectrum.mask`** | **`REDSHIFT`** | **`REDFLAG`** | **`EXPTIME`** | **`NORM`** | **`MAG`** | **`ra`** | **`dec`** | **`object_id`** |
 | --- |  --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | **Data Type** |  int64 | list[float] | list[float] | list[float] | list[float] | float | float | float | float | float | float | float | string |
-| **Nested?** |  — | spectrum | spectrum | spectrum | spectrum | — | — | — | — | — | — | — | — |
+| **Nested?** |  � | spectrum | spectrum | spectrum | spectrum | � | � | � | � | � | � | � | � |
 | **Value count** |  30,979 | 17,255,303 | 17,255,303 | 17,255,303 | 17,255,303 | 30,979 | 30,979 | 30,979 | 30,979 | 30,979 | 30,979 | 30,979 | 30,979 |
-| **Example row** |  1339537029392400028 | [0.1504, 0.1525, 0.1538, 0.1543, … (557 total)] | [8.585e-17, 1.011e-16, 1.137e-16, … (557 total)] | [5514, 5521, 5529, 5536, 5543, … (557 total)] | [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, … (557 total)] | 0.7298 | 0.7298 | 540 | 2.768 | 21.98 | 333.4 | 1.077 | 404055346.0 |
+| **Example row** |  1339537029392400028 | [0.1504, 0.1525, 0.1538, 0.1543, � (557 total)] | [8.585e-17, 1.011e-16, 1.137e-16, � (557 total)] | [5514, 5521, 5529, 5536, 5543, � (557 total)] | [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, � (557 total)] | 0.7298 | 0.7298 | 540 | 2.768 | 21.98 | 333.4 | 1.077 | 404055346.0 |
 | **Minimum value** |  1339504075142965993 | -1759.751953125 | -2.9612807435456968e-18 | 5514.27978515625 | -0.0 | -0.0 | -0.0 | 540.0 | 0.021366773173213005 | 15.182700157165527 | 330.0451965332031 | 0.8620766997337341 | 401007640.0 |
 | **Maximum value** |  1341678248016204204 | 2786.57177734375 | 7.853208785491006e-07 | 9484.1201171875 | 3.0 | 4.395299911499023 | 4.395299911499023 | 540.0 | 3519.447509765625 | 23.96969985961914 | 335.39093017578125 | 2.3695244789123535 | 411162926.0 |
 
@@ -101,3 +101,22 @@ print(crossmatched)
 ```
 
 See the [LSDB documentation](https://docs.lsdb.io/) for more details on crossmatching and other operations.
+
+### Dataset-specific context
+
+**Original survey**  
+This dataset is based on the VIMOS Public Extragalactic Redshift Survey (VIPERS), which provides optical spectra of galaxies in the redshift range 0.5 < z < 1.0.
+
+**Data modality**  
+The dataset consists of fixed-size optical spectra (1 × 557) covering a wavelength range from 5514 Å to 9484 Å. Each spectrum includes flux values, the corresponding wavelength vector, inverse variance (ivar), and a mask indicating the quality of each measurement. The dataset contains approximately 90,000 galaxy spectra.
+
+**Typical use cases**  
+This dataset has been used in a number of scientific publications, as well as in
+machine learning specific applications, including source identification with SVMs and
+galaxy classification with unsupervised methods.
+
+**Caveats**  
+The dataset includes spectra that have been normalized and transformed during preprocessing to ensure consistency with other datasets.
+
+**Citation**  
+This dataset uses data from the VIMOS Public Extragalactic Redshift Survey (VIPERS), obtained with the ESO Very Large Telescope. Users should acknowledge the [VIPERS survey](http://vipers.inaf.it) and its participating institutions.

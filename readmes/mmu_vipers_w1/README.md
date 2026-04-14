@@ -101,3 +101,22 @@ print(crossmatched)
 ```
 
 See the [LSDB documentation](https://docs.lsdb.io/) for more details on crossmatching and other operations.
+
+### Dataset-specific context
+
+**Original survey**  
+This dataset is based on the VIMOS Public Extragalactic Redshift Survey (VIPERS), which provides optical spectra of galaxies in the redshift range 0.5 < z < 1.0.
+
+**Data modality**  
+The dataset consists of fixed-size optical spectra (1 × 557) covering a wavelength range from 5514 Å to 9484 Å. Each spectrum includes flux values, the corresponding wavelength vector, inverse variance (ivar), and a mask indicating the quality of each measurement. The dataset contains approximately 90,000 galaxy spectra.
+
+**Typical use cases**  
+This dataset has been used in a number of scientific publications, as well as in
+machine learning specific applications, including source identification with SVMs and
+galaxy classification with unsupervised methods.
+
+**Caveats**  
+The dataset includes spectra that have been normalized and transformed during preprocessing to ensure consistency with other datasets.
+
+**Citation**  
+This dataset uses data from the VIMOS Public Extragalactic Redshift Survey (VIPERS), obtained with the ESO Very Large Telescope. Users should acknowledge the [VIPERS survey](http://vipers.inaf.it) and its participating institutions.

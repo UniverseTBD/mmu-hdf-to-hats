@@ -101,3 +101,23 @@ print(crossmatched)
 ```
 
 See the [LSDB documentation](https://docs.lsdb.io/) for more details on crossmatching and other operations.
+
+### Dataset-specific context
+
+**Original survey**  
+This dataset is based on the NASA Transiting Exoplanet Survey Satellite (TESS), an all-sky photometric survey observing millions of sources to discover exoplanets and study variable stars.
+
+**Data modality**  
+The dataset consists of light curve data (brightness over time) including object_id, time (BTJD; Barycenter corrected TESS Julian Date), flux (electrons per second) and flux_error (electrons per second). It contains light curves for approximately 1,120,000 stars observed in selected sectors. 
+
+
+Stars are typically observed for about 27 days per sector and may be observed multiple times across different sectors. Observations have a cadence between 20 seconds and 30 minutes.
+
+**Typical use cases**  
+TESS light curves have been used in machine learning applications such as light curve classification (e.g. transiting exoplanets, pulsating stars, eclipsing binaries) and stellar parameter estimation.
+
+**Caveats**  
+The dataset includes data from selected observing sectors. Light curves are processed using the PDC_SAP flux, with additional cleaning applied through quality flag filtering to remove potentially anomalous data points.
+
+**Citation**  
+The data are publicly available through the Mikulski Archive for Space Telescopes (MAST) and are released under the CC BY 4.0 license.
