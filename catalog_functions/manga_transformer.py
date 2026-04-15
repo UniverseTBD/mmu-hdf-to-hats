@@ -87,11 +87,11 @@ class MaNGATransformer(BaseTransformer):
         # to match datasets Array2D structure
         spaxel_struct = pa.struct(
             [
-                pa.field("flux", pa.list_(pa.list_(pa.float32()))),  # 2D array
-                pa.field("ivar", pa.list_(pa.list_(pa.float32()))),  # 2D array
-                pa.field("mask", pa.list_(pa.list_(pa.int32()))),    # 2D array
-                pa.field("lsf", pa.list_(pa.list_(pa.float32()))),   # 2D array
-                pa.field("lambda", pa.list_(pa.list_(pa.float32()))),  # 2D array
+                pa.field("flux", pa.list_(pa.large_list(pa.float32()))),  # 2D array
+                pa.field("ivar", pa.list_(pa.large_list(pa.float32()))),  # 2D array
+                pa.field("mask", pa.list_(pa.large_list(pa.int32()))),    # 2D array
+                pa.field("lsf", pa.list_(pa.large_list(pa.float32()))),   # 2D array
+                pa.field("lambda", pa.list_(pa.large_list(pa.float32()))),  # 2D array
                 pa.field("x", pa.int64()),
                 pa.field("y", pa.int64()),
                 pa.field("spaxel_idx", pa.int64()),
@@ -110,7 +110,7 @@ class MaNGATransformer(BaseTransformer):
                 pa.field("ellcoo_theta_units", pa.string()),
             ]
         )
-        fields.append(pa.field("spaxels", pa.large_list(spaxel_struct)))
+        fields.append(pa.field("spaxels", pa.list_(spaxel_struct)))
 
         # Images - list of reconstructed griz images
         image_struct = pa.struct(
@@ -133,13 +133,13 @@ class MaNGATransformer(BaseTransformer):
             [
                 pa.field("group", pa.string()),
                 pa.field("label", pa.string()),
-                pa.field("flux", pa.list_(pa.list_(pa.float32()))),  # 2D array
-                pa.field("ivar", pa.list_(pa.list_(pa.float32()))),  # 2D array
-                pa.field("mask", pa.list_(pa.list_(pa.float32()))),  # 2D array
+                pa.field("flux", pa.list_(pa.large_list(pa.float32()))),  # 2D array
+                pa.field("ivar", pa.list_(pa.large_list(pa.float32()))),  # 2D array
+                pa.field("mask", pa.list_(pa.large_list(pa.float32()))),  # 2D array
                 pa.field("array_units", pa.string()),
             ]
         )
-        fields.append(pa.field("maps", pa.large_list(map_struct)))
+        fields.append(pa.field("maps", pa.list_(map_struct)))
 
         # Object ID
         fields.append(pa.field("object_id", pa.string()))
