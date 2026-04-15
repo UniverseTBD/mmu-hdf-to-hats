@@ -111,6 +111,14 @@ def parse_args(argv):
         help="Number of Dask workers to use in production mode. Defaults to min(8, cpu_count()). Ignored with --debug.",
     )
     parser.add_argument(
+        "--max-bytes",
+        default=None,
+        type=int,
+        help="Max in-memory bytes per HATS pixel partition. "
+             "When set, overrides --max-rows (hats_import uses "
+             "threshold_mode='mem_size')."
+    )
+    parser.add_argument(
         "--row-group-size",
         default=None,
         type=int,
@@ -259,6 +267,7 @@ def main(argv=None):
             ra_column=cmd_args.ra,
             dec_column=cmd_args.dec,
             pixel_threshold=cmd_args.max_rows,
+            byte_pixel_threshold=cmd_args.max_bytes,
             lowest_healpix_order=4,
             row_group_kwargs=row_group_kwargs,
         )
