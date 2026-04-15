@@ -5,7 +5,6 @@ MaNGATransformer: Clean class-based transformation from HDF5 to PyArrow tables.
 import math
 import h5py
 import pyarrow as pa
-import numpy as np
 from hats_import.catalog.file_readers import InputReader
 from upath import UPath
 from catalog_functions.utils import BaseTransformer
@@ -111,7 +110,7 @@ class MaNGATransformer(BaseTransformer):
                 pa.field("ellcoo_theta_units", pa.string()),
             ]
         )
-        fields.append(pa.field("spaxels", pa.list_(spaxel_struct)))
+        fields.append(pa.field("spaxels", pa.large_list(spaxel_struct)))
 
         # Images - list of reconstructed griz images
         image_struct = pa.struct(
@@ -140,7 +139,7 @@ class MaNGATransformer(BaseTransformer):
                 pa.field("array_units", pa.string()),
             ]
         )
-        fields.append(pa.field("maps", pa.list_(map_struct)))
+        fields.append(pa.field("maps", pa.large_list(map_struct)))
 
         # Object ID
         fields.append(pa.field("object_id", pa.string()))

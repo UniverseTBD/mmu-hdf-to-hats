@@ -111,6 +111,12 @@ def parse_args(argv):
         help="Number of Dask workers to use in production mode. Defaults to min(8, cpu_count()). Ignored with --debug.",
     )
     parser.add_argument(
+        "--memory-limit",
+        default="48G",
+        type=str,
+        help="Per-worker memory limit passed to Dask (e.g. '48G', '96G'). Ignored with --debug.",
+    )
+    parser.add_argument(
         "--max-bytes",
         default=None,
         type=int,
@@ -284,7 +290,7 @@ def main(argv=None):
     else:
         # Production mode: use multiple workers
         n_workers = cmd_args.workers or min(8, cpu_count())
-        client_kwargs = {"n_workers": min(n_workers, cpu_count()), "threads_per_worker": 1, "memory_limit": "48G"}
+        client_kwargs = {"n_workers": min(n_workers, cpu_count()), "threads_per_worker": 1, "memory_limit": cmd_args.memory_limit}
         LOGGER.info(
             f"Running in PRODUCTION mode ({client_kwargs['n_workers']} workers)"
         )
