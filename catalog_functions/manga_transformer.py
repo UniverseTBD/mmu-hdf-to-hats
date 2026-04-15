@@ -79,8 +79,8 @@ class MaNGATransformer(BaseTransformer):
         fields = []
 
         # Metadata
-        fields.append(pa.field("z", pa.float32()))
-        fields.append(pa.field("spaxel_size", pa.float32()))
+        fields.append(pa.field("z", pa.float64()))
+        fields.append(pa.field("spaxel_size", pa.float64()))
         fields.append(pa.field("spaxel_size_units", pa.string()))
 
         # Spaxels - list of structs with spectrum data
@@ -90,12 +90,12 @@ class MaNGATransformer(BaseTransformer):
             [
                 pa.field("flux", pa.list_(pa.list_(pa.float32()))),  # 2D array
                 pa.field("ivar", pa.list_(pa.list_(pa.float32()))),  # 2D array
-                pa.field("mask", pa.list_(pa.list_(pa.int64()))),    # 2D array
+                pa.field("mask", pa.list_(pa.list_(pa.int32()))),    # 2D array
                 pa.field("lsf", pa.list_(pa.list_(pa.float32()))),   # 2D array
                 pa.field("lambda", pa.list_(pa.list_(pa.float32()))),  # 2D array
-                pa.field("x", pa.int8()),
-                pa.field("y", pa.int8()),
-                pa.field("spaxel_idx", pa.int16()),
+                pa.field("x", pa.int64()),
+                pa.field("y", pa.int64()),
+                pa.field("spaxel_idx", pa.int64()),
                 pa.field("flux_units", pa.string()),
                 pa.field("lambda_units", pa.string()),
                 pa.field("skycoo_x", pa.float32()),
@@ -231,7 +231,7 @@ class MaNGATransformer(BaseTransformer):
                 spaxel = {
                     "flux": flux.tolist(),
                     "ivar": ivar.tolist(),
-                    "mask": mask.astype(np.int64).tolist(),
+                    "mask": mask.tolist(),
                     "lsf": lsf.tolist(),
                     "lambda": lmbda.tolist(),
                     "x": int(spaxel_data[5]),
