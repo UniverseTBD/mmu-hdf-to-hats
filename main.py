@@ -130,6 +130,12 @@ def parse_args(argv):
         type=int,
         help="Row group size for parquet files. If not specified, uses PyArrow's default (min of table size and 1M rows). For image data, try 50-250.",
     )
+    parser.add_argument(
+        "--margin-threshold",
+        default=10.0,
+        type=float,
+        help="Margin cache threshold in arcseconds. Pass a non-positive value to disable the margin cache.",
+    )
     return parser.parse_args(argv)
 
 
@@ -277,8 +283,11 @@ def main(argv=None):
             lowest_healpix_order=4,
             row_group_kwargs=row_group_kwargs,
         )
-        .add_margin(margin_threshold=10.0, is_default=True)
     )
+    if cmd_args.margin_threshold > 0:
+        import_args = import_args.add_margin(
+            margin_threshold=cmd_args.margin_threshold, is_default=True
+        )
 
     # Choose Client configuration based on debug flag
     if cmd_args.debug:
