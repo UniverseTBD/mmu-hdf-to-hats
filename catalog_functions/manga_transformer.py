@@ -80,7 +80,7 @@ class MaNGATransformer(BaseTransformer):
         # Metadata
         fields.append(pa.field("z", pa.float64()))
         fields.append(pa.field("spaxel_size", pa.float64()))
-        fields.append(pa.field("spaxel_size_units", pa.string()))
+        fields.append(pa.field("spaxel_size_units", pa.large_string()))
 
         # Spaxels - list of structs with spectrum data
         # Note: flux, ivar, mask, lsf, lambda are 2D arrays (shape: 1 x spectrum_size)
@@ -95,54 +95,54 @@ class MaNGATransformer(BaseTransformer):
                 pa.field("x", pa.int64()),
                 pa.field("y", pa.int64()),
                 pa.field("spaxel_idx", pa.int64()),
-                pa.field("flux_units", pa.string()),
-                pa.field("lambda_units", pa.string()),
+                pa.field("flux_units", pa.large_string()),
+                pa.field("lambda_units", pa.large_string()),
                 pa.field("skycoo_x", pa.float32()),
                 pa.field("skycoo_y", pa.float32()),
                 pa.field("ellcoo_r", pa.float32()),
                 pa.field("ellcoo_rre", pa.float32()),
                 pa.field("ellcoo_rkpc", pa.float32()),
                 pa.field("ellcoo_theta", pa.float32()),
-                pa.field("skycoo_units", pa.string()),
-                pa.field("ellcoo_r_units", pa.string()),
-                pa.field("ellcoo_rre_units", pa.string()),
-                pa.field("ellcoo_rkpc_units", pa.string()),
-                pa.field("ellcoo_theta_units", pa.string()),
+                pa.field("skycoo_units", pa.large_string()),
+                pa.field("ellcoo_r_units", pa.large_string()),
+                pa.field("ellcoo_rre_units", pa.large_string()),
+                pa.field("ellcoo_rkpc_units", pa.large_string()),
+                pa.field("ellcoo_theta_units", pa.large_string()),
             ]
         )
-        fields.append(pa.field("spaxels", pa.list_(spaxel_struct)))
+        fields.append(pa.field("spaxels", pa.large_list(spaxel_struct)))
 
         # Images - list of reconstructed griz images
         image_struct = pa.struct(
             [
-                pa.field("filter", pa.string()),
-                pa.field("flux", pa.list_(pa.list_(pa.float32()))),  # 2D array
-                pa.field("flux_units", pa.string()),
-                pa.field("psf", pa.list_(pa.list_(pa.float32()))),  # 2D array
-                pa.field("psf_units", pa.string()),
+                pa.field("filter", pa.large_string()),
+                pa.field("flux", pa.list_(pa.large_list(pa.float32()))),  # 2D array
+                pa.field("flux_units", pa.large_string()),
+                pa.field("psf", pa.list_(pa.large_list(pa.float32()))),  # 2D array
+                pa.field("psf_units", pa.large_string()),
                 pa.field("scale", pa.float32()),
-                pa.field("scale_units", pa.string()),
+                pa.field("scale_units", pa.large_string()),
             ]
         )
-        fields.append(pa.field("images", pa.list_(image_struct)))
+        fields.append(pa.field("images", pa.large_list(image_struct)))
 
         for f in self.DOUBLE_FEATURES:
             fields.append(pa.field(f, pa.float64()))
         # Maps - list of DAP analysis maps
         map_struct = pa.struct(
             [
-                pa.field("group", pa.string()),
-                pa.field("label", pa.string()),
+                pa.field("group", pa.large_string()),
+                pa.field("label", pa.large_string()),
                 pa.field("flux", pa.list_(pa.large_list(pa.float32()))),  # 2D array
                 pa.field("ivar", pa.list_(pa.large_list(pa.float32()))),  # 2D array
                 pa.field("mask", pa.list_(pa.large_list(pa.float32()))),  # 2D array
-                pa.field("array_units", pa.string()),
+                pa.field("array_units", pa.large_string()),
             ]
         )
-        fields.append(pa.field("maps", pa.list_(map_struct)))
+        fields.append(pa.field("maps", pa.large_list(map_struct)))
 
         # Object ID
-        fields.append(pa.field("object_id", pa.string()))
+        fields.append(pa.field("object_id", pa.large_string()))
 
         return pa.schema(fields)
 
