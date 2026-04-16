@@ -2,10 +2,11 @@
 
 # NOTES
 # - Building MaNGA is memory-intensive ==> use the 'mem' partition
-# - 'mem' partition has nodes with 3000GB of memory, 96 CPUs, 7-day runtime limit
+# - 'mem' partition nodes have 3000GB of memory, 96 CPUs, 7-day runtime limit
+#   otherwise gen partition nodes have a bit under 1000GB, 128 CPUs, 7-day limit
 # - max-bytes overrides max-rows, but max-rows is required arg for back-compat
 # - margin-threshold=-1 disables margin caching. We can always build a margin
-# cache separately later
+#   cache separately later
 
 #SBATCH --job-name="mmu-hdf5-to-hats: build MaNGA"
 #SBATCH --partition=mem
@@ -25,7 +26,7 @@ srun uv run python ./main.py \
   --transformer=manga \
   --name=mmu_manga \
   --input=/mnt/ceph/users/polymathic/MultimodalUniverse/manga/manga \
-  --output=/mnt/ceph/users/polymathic/MultimodalUniverse/manga-mmu-hdf5-to-hats \
+  --output=/mnt/ceph/users/polymathic/manga-mmu-hdf5-to-hats \
   --max-rows=100 \
   --max-bytes=1 \
   --tmp-dir=/mnt/ceph/users/polymathic/manga-staging-tmp \

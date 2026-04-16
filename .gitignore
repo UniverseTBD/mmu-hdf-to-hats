@@ -195,6 +195,7 @@ scripts/kepler/figs
 *.h5
 
 slurm*.out
+slurm-logs/
 
 # Temporary exploration directories
 test_data_exploration/
