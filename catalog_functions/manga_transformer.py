@@ -86,8 +86,8 @@ class MaNGATransformer(BaseTransformer):
         # Spaxels - list of structs with spectrum data
         # Note: flux, ivar, mask, lsf, lambda are 2D arrays (shape: 1 x spectrum_size)
         # to match datasets Array2D structure
-        spectrum_2d = pa.fixed_size_list(pa.fixed_size_list(pa.float32(), self.SPECTRUM_SIZE), 1)
-        spectrum_2d_int = pa.fixed_size_list(pa.fixed_size_list(pa.int32(), self.SPECTRUM_SIZE), 1)
+        spectrum_2d = pa.list_(pa.list_(pa.float32(), self.SPECTRUM_SIZE), 1)
+        spectrum_2d_int = pa.list_(pa.list_(pa.int32(), self.SPECTRUM_SIZE), 1)
         spaxel_struct = pa.struct(
             [
                 pa.field("flux", spectrum_2d),
@@ -113,10 +113,10 @@ class MaNGATransformer(BaseTransformer):
                 pa.field("ellcoo_theta_units", pa.string()),
             ]
         )
-        fields.append(pa.field("spaxels", pa.fixed_size_list(spaxel_struct, self.SPAXELS_PER_ROW)))
+        fields.append(pa.field("spaxels", pa.list_(spaxel_struct, self.SPAXELS_PER_ROW)))
 
         # Images - list of reconstructed griz images
-        image_2d = pa.fixed_size_list(pa.fixed_size_list(pa.float32(), self.IMAGE_SIZE), self.IMAGE_SIZE)
+        image_2d = pa.list_(pa.list_(pa.float32(), self.IMAGE_SIZE), self.IMAGE_SIZE)
         image_struct = pa.struct(
             [
                 pa.field("filter", pa.string()),
@@ -128,12 +128,12 @@ class MaNGATransformer(BaseTransformer):
                 pa.field("scale_units", pa.string()),
             ]
         )
-        fields.append(pa.field("images", pa.fixed_size_list(image_struct, len(self.IMAGE_FILTERS))))
+        fields.append(pa.field("images", pa.list_(image_struct, len(self.IMAGE_FILTERS))))
 
         for f in self.DOUBLE_FEATURES:
             fields.append(pa.field(f, pa.float64()))
         # Maps - list of DAP analysis maps
-        map_2d = pa.fixed_size_list(pa.fixed_size_list(pa.float32(), self.IMAGE_SIZE), self.IMAGE_SIZE)
+        map_2d = pa.list_(pa.list_(pa.float32(), self.IMAGE_SIZE), self.IMAGE_SIZE)
         map_struct = pa.struct(
             [
                 pa.field("group", pa.string()),
