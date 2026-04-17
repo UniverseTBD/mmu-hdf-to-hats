@@ -2,24 +2,31 @@
 
 ## The issue
 
-The MMU MaNGA ingest is driven by `drpall-v3_1_1.fits` (MANGA HDU), inner-joined to
-`dapall` on `plateifu`/`PLATEIFU` and filtered to `DAPDONE == True`. This is
-what `scripts/manga/build_parent_sample.py` in the MMU repo uses and it matches
-the row count in the staging histogram (~10,735 rows).
+The MMU MaNGA ingest is driven by `drpall-v3_1_1.fits` (MANGA HDU), inner-joined
+to `dapall` HDU `HYB10-MILESHC-MASTARSSP` on `plateifu`/`PLATEIFU` and filtered
+to `DAPDONE == True`. This is what `scripts/manga/build_parent_sample.py` in
+the MMU repo does and it matches the row count in the staging histogram
+(~10,735 rows; we measure 10,737 from the catalog filter — see
+`notebooks/check_manga_drpall_collisions_mmu.ipynb`).
 
 Each row in drpall is one IFU observation (`plateifu`), but a single galaxy
-(`mangaid`) can be observed by more than one IFU at identical `(objra, objdec)`.
-Running the collision sweep against drpall:
+(`mangaid`) can be observed by more than one IFU at identical
+`(objra, objdec)`. Running the collision sweep on the *MMU parent sample*
+(post-DAPDONE filter):
 
-- 11,273 total rows across 10,632 unique `mangaid`
-- **169 bit-identical `(objra, objdec)` groups** containing 828 rows in total
-- **Max 49 rows at a single coordinate**
+- 10,737 total rows across 10,556 unique `mangaid`
+- **146 bit-identical `(objra, objdec)` groups** containing 319 rows in total
+- **Max 5 rows at a single coordinate**
+
+(The unfiltered drpall has noticeably worse clustering — 169 groups, max 49 —
+because the 49-row cluster is a calibration/standards target whose
+re-observations are excluded by `DAPDONE`. Always do the analysis on the
+MMU-filtered sample.)
 
 At any healpix order, these clusters occupy the same pixel by construction
-(HEALPix is a function of RA/Dec and bit-identical coords always land in the
-same pixel). The sweep plateaus at `max_per_pixel = 49` from order 11 onward
-and `n_collisions` stabilizes near 169 (= the bit-identical count) at order 19
-and above.
+(HEALPix is a function of RA/Dec; bit-identical coords always land in the
+same pixel). The sweep on the MMU sample plateaus at `max_per_pixel = 5`
+from order 13 onward and `n_collisions` stabilizes near 146 at high orders.
 
 ## Why HATS cannot solve this at the format level
 
@@ -31,41 +38,22 @@ single pixel held multiple files, the index would no longer be unique.
 `row_group_size` splits a file's internal layout but doesn't produce multiple
 files per pixel.
 
-## What we had hoped to do: limit file size
-
-The original intent (reflected in the earlier sbatch config:
-`--max-bytes=1 --max-rows=1`) was to keep every output file small — ideally
-one row per file, so each cube payload lives in its own Parquet.
-
-This is not achievable for MaNGA:
-
-- `pixel_threshold < 49` (either bytes or rows) causes
-  `hats.pixel_math.partition_stats._validate_alignment_arguments` to raise
-  `ValueError: single pixel ... exceeds threshold` because 49 rows will always
-  fall into one pixel.
-- Bypassing the validation causes `_get_alignment` to silently drop those 49
-  rows (it leaves the leaf pixel as `None` in the alignment array).
-- Increasing `highest_healpix_order` does not help: identical coords never
-  separate.
-
 So the lower bound on file size is *the largest bit-identical cluster*.
-For MaNGA that is ~49 reobservations of the same galaxy stored in one file.
+For the MMU MaNGA sample that is 5 reobservations of the same galaxy in one
+file (was 49 before we filtered correctly).
 
-## Current workaround
+## Current configuration
 
-Monkey-patch `hats.pixel_math.partition_stats` in `main.py` so that:
+The sbatch job runs with `--max-rows=6 --highest-healpix-order=12`:
 
-1. `_validate_alignment_arguments` skips the `max_bin > threshold` check.
-2. `_get_alignment` accepts any non-empty pixel as a leaf when
-   `read_order == highest_healpix_order`, regardless of its count.
-
-With `--max-rows=1 --highest-healpix-order=19`:
-
-- Every splittable row lands in its own file.
-- The ~169 unsplittable clusters each produce one file containing 2-49 rows.
-- No data loss, no validation errors, spatial index still correct.
-
-This is what the sbatch build uses.
+- At order 12 the MMU sample has `max_per_pixel = 6`, so `max-rows >= 6`
+  satisfies hats-import's `pixel_threshold` check natively — no patching
+  required.
+- We previously monkey-patched `hats.pixel_math.partition_stats` to bypass
+  the validation; that patch has been removed now that the parent sample is
+  small enough.
+- The 146 unsplittable clusters each produce one file containing 2-5 rows;
+  splittable rows go into pixels with up to 6 rows.
 
 ## More involved alternative: object/source split
 
@@ -73,8 +61,8 @@ HATS's native pattern for many-observations-per-object is a three-catalog
 setup using `hats_import.association.AssociationArguments`:
 
 ```
-object_catalog/   # one row per mangaid at (objra, objdec) — ~10,632 rows
-source_catalog/   # one row per plateifu — 11,273 rows, carries the payload
+object_catalog/   # one row per mangaid at (objra, objdec) — ~10,556 rows
+source_catalog/   # one row per plateifu — 10,737 rows, carries the payload
 assoc_obj_src/    # foreign-key mapping: mangaid ↔ plateifu
 ```
 
@@ -90,9 +78,8 @@ Why we did not pursue this now:
 - The MaNGA scientific unit that users query is the `plateifu` observation
   (one IFU → one cube + DAP maps), not the collapsed galaxy. An object
   catalog adds a layer users mostly don't need.
-- Only ~6% of galaxies are reobserved; the 49-row cluster appears to be an
-  outlier (plausibly repeated pointings of a calibration/standards target),
-  not a broad pattern.
+- After the DAPDONE filter only ~1.7% of galaxies are reobserved and the
+  worst cluster is 5 rows — small enough that flat partitioning is fine.
 - LSDB users who want per-galaxy grouping can call `.nest_lists('mangaid')`
   on the flat catalog after loading.
 

@@ -23,62 +23,6 @@ from catalog_functions.utils import BaseTransformer
 LOGGER = logging.getLogger(__name__)
 
 
-def _patch_hats_alignment_for_unsplittable_clusters():
-    """Allow pixels with count > pixel_threshold to survive at highest_healpix_order.
-
-    Upstream hats.pixel_math.partition_stats raises if any single leaf pixel
-    exceeds pixel_threshold, and the alignment walk drops such pixels silently.
-    For catalogs with bit-identical (ra, dec) clusters (e.g. MaNGA
-    reobservations), no healpix order can split them, so we force-include at
-    the leaf.
-    """
-    from hats.pixel_math import partition_stats
-    from hats.pixel_math import healpix_shim as hp_shim
-
-    def _lax_validate(row_count_histogram, mem_size_histogram, highest_order, lowest_order, threshold):
-        if len(row_count_histogram) != hp_shim.order2npix(highest_order):
-            raise ValueError("histogram is not the right size")
-        if lowest_order > highest_order:
-            raise ValueError("lowest_order should be less than highest_order")
-
-    def _lax_alignment(nested_sums_row_count, highest_order, lowest_order, threshold, nested_sums_mem_size):
-        sums = nested_sums_mem_size if nested_sums_mem_size is not None else nested_sums_row_count
-        nested_alignment = [np.full(hp_shim.order2npix(i), None) for i in range(highest_order + 1)]
-        for read_order in range(lowest_order, highest_order + 1):
-            parent_order = read_order - 1
-            for index in range(len(sums[read_order])):
-                parent_alignment = None
-                if parent_order >= 0:
-                    parent_alignment = nested_alignment[parent_order][index >> 2]
-                if parent_alignment:
-                    nested_alignment[read_order][index] = parent_alignment
-                elif sums[read_order][index] == 0:
-                    continue
-                elif sums[read_order][index] <= threshold or read_order == highest_order:
-                    if nested_sums_mem_size is None:
-                        nested_alignment[read_order][index] = (
-                            read_order, index, sums[read_order][index],
-                        )
-                    else:
-                        nested_alignment[read_order][index] = (
-                            read_order, index,
-                            nested_sums_row_count[read_order][index],
-                            nested_sums_mem_size[read_order][index],
-                        )
-        if nested_sums_mem_size is not None:
-            nested_alignment[highest_order] = np.array(
-                [a[:3] if a else None for a in nested_alignment[highest_order]],
-                dtype="object",
-            )
-        return nested_alignment[highest_order]
-
-    partition_stats._validate_alignment_arguments = _lax_validate
-    partition_stats._get_alignment = _lax_alignment
-
-
-_patch_hats_alignment_for_unsplittable_clusters()
-
-
 def available_transformers():
     transformers = []
     for module_info in walk_packages(
