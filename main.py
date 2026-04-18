@@ -137,6 +137,12 @@ def parse_args(argv):
         help="Margin cache threshold in arcseconds. Pass a non-positive value to disable the margin cache.",
     )
     parser.add_argument(
+        "--resume",
+        default=True,
+        action=argparse.BooleanOptionalAction,
+        help="Resume a previous run from intermediate state in --tmp-dir. Pass --no-resume to start from scratch (required when changing --highest-healpix-order).",
+    )
+    parser.add_argument(
         "--highest-healpix-order",
         default=None,
         type=int,
@@ -282,6 +288,7 @@ def main(argv=None):
         byte_pixel_threshold=cmd_args.max_bytes,
         lowest_healpix_order=4,
         row_group_kwargs=row_group_kwargs,
+        resume=cmd_args.resume,
     )
     if cmd_args.highest_healpix_order is not None:
         catalog_kwargs["highest_healpix_order"] = cmd_args.highest_healpix_order
