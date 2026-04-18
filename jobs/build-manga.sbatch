@@ -46,5 +46,4 @@ srun uv run python ./main.py \
   --row-group-size=1 \
   --highest-healpix-order=12 \
   --margin-threshold=-1 \
-  --memory-limit=28G \
-  --no-resume
+  --memory-limit=28G
