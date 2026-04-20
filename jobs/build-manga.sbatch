@@ -6,10 +6,6 @@
 #   otherwise gen partition nodes have a bit under 1000GB, 128 CPUs, 7-day limit
 # - margin-threshold=-1 disables margin caching. We can always build a margin
 #   cache separately later
-# - highest-healpix-order=12 picked because at order 12 the largest pixel in
-#   the MMU parent sample holds 6 rows (see notes/manga-bit-identical-clusters.md);
-#   this lets max-rows=6 satisfy hats-import's pixel_threshold check natively
-#   without a monkey-patch.
 
 #SBATCH --job-name="mmu-hdf5-to-hats: build MaNGA"
 #SBATCH --partition=mem
@@ -35,12 +31,15 @@ if [ "${CLEAN:-0}" = "1" ]; then
   rm -rf "${TMP_DIR}" "${OUTPUT_DIR}/${CATALOG_NAME}"
 fi
 
+# NOTE: max-bytes=3500000000 ~ 3.5GB is the in-memory size, but this compresses
+# down to a bit over 1GB on disk.
+
 srun uv run python ./main.py \
   --transformer=manga \
   --name=${CATALOG_NAME} \
   --input=/mnt/ceph/users/polymathic/MultimodalUniverse/manga/manga \
   --output=${OUTPUT_DIR} \
-  --max-rows=6 \
+  --max-bytes=3500000000 \
   --tmp-dir=${TMP_DIR} \
   --workers=${SLURM_CPUS_PER_TASK} \
   --row-group-size=1 \
