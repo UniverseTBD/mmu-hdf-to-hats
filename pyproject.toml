@@ -16,6 +16,7 @@ dependencies = [
     "datasets",
     "hats>=0.8.2",
     "pyyaml",
+    "matplotlib",
 ]
 
 # add dev dependencies
