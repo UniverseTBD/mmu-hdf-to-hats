@@ -101,3 +101,20 @@ print(crossmatched)
 ```
 
 See the [LSDB documentation](https://docs.lsdb.io/) for more details on crossmatching and other operations.
+
+### Dataset-specific context
+
+**Original survey**  
+This dataset is based on the third data release of the first stage of the Carnegie Supernova Project (CSP) and contains light curves of 134 spectroscopically confirmed Type Ia supernovae observed between 2004 and 2009.
+
+**Data modality**  
+The dataset consists of light curve data. The data fields are identical to those of the CfA datasets, with measurements provided in the ugriBVYJH bands.
+
+**Typical use cases**  
+The dataset has been used in many studies, including those mentioned in the CfA section, as well as several CSP studies.
+
+**Caveats**  
+The dataset uses different photometric bands (ugriBVYJH) while keeping the same data fields as the CfA datasets. No preprocessing has been applied.
+
+**Citation**  
+The dataset is released under the CC BY 4.0 license. Users should cite the corresponding data release paper and may access the data through the [CSP data products page](https://csp.obs.carnegiescience.edu/data).
