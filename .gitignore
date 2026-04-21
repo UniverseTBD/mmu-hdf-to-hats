@@ -201,3 +201,7 @@ slurm-logs/
 test_data_exploration/
 hats/
 tmp/
+
+# Agents
+.claude
+.codex
