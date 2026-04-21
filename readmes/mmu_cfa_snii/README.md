@@ -1,8 +1,3 @@
-
-<div align="center">
-<img src="example_figure.png" width="600">
-</div>
-
 ---
 configs:
 - config_name: default
@@ -14,6 +9,10 @@ pretty_name: mmu_cfa_snii
 size_categories:
 - n<1K
 ---
+
+<div align="center">
+<img src="example_figure.png" width="600">
+</div>
 
 # mmu_cfa_snii HATS Catalog Collection
 

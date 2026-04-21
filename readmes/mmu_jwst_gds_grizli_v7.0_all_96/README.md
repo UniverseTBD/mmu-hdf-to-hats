@@ -1,8 +1,3 @@
-
-<div align="center">
-<img src="example_figure.png" width="600">
-</div>
-
 ---
 configs:
 - config_name: default
@@ -14,6 +9,10 @@ pretty_name: mmu_jwst_gds_grizli_v7.0_all_96
 size_categories:
 - 10K<n<100K
 ---
+
+<div align="center">
+<img src="example_figure.png" width="600">
+</div>
 
 # mmu_jwst_gds_grizli_v7.0_all_96 HATS Catalog Collection
 

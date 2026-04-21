@@ -1,8 +1,3 @@
-
-<div align="center">
-<img src="example_figure.png" width="600">
-</div>
-
 ---
 configs:
 - config_name: default
@@ -14,6 +9,10 @@ pretty_name: mmu_ssl_legacysurvey_north
 size_categories:
 - 10M<n<100M
 ---
+
+<div align="center">
+<img src="example_figure.png" width="600">
+</div>
 
 # mmu_ssl_legacysurvey_north HATS Catalog Collection
 

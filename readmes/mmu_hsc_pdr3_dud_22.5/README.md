@@ -1,8 +1,3 @@
-
-<div align="center">
-<img src="example_figure.png" width="600">
-</div>
-
 ---
 configs:
 - config_name: default
@@ -14,6 +9,10 @@ pretty_name: mmu_hsc_pdr3_dud_22.5
 size_categories:
 - 100K<n<1M
 ---
+
+<div align="center">
+<img src="example_figure.png" width="600">
+</div>
 
 # mmu_hsc_pdr3_dud_22.5 HATS Catalog Collection
 

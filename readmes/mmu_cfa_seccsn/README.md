@@ -1,8 +1,3 @@
-
-<div align="center">
-<img src="example_figure.png" width="600">
-</div>
-
 ---
 configs:
 - config_name: default
@@ -14,6 +9,10 @@ pretty_name: mmu_cfa_seccsn
 size_categories:
 - n<1K
 ---
+
+<div align="center">
+<img src="example_figure.png" width="600">
+</div>
 
 # mmu_cfa_seccsn HATS Catalog Collection
 
@@ -122,4 +121,3 @@ The dataset follows the CfA data structure. The flux and flux_err fields are rep
 
 **Citation**  
 Data are obtained from the [CfA Supernova Archive](https://lweb.cfa.harvard.edu/supernova/). Users should cite the corresponding CfA-SECCSN publication and follow the archive acknowledgement guidelines.
-
