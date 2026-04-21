@@ -79,8 +79,8 @@ class DESIPROVABGSTransformer(BaseTransformer):
         columns = {}
 
         # 1. Add coordinates
-        columns["ra"] = pa.array(data["ra"][:].astype(np.float32))
-        columns["dec"] = pa.array(data["dec"][:].astype(np.float32))
+        columns["ra"] = pa.array(data["ra"][:].astype(np.float32).reshape(-1))
+        columns["dec"] = pa.array(data["dec"][:].astype(np.float32).reshape(-1))
 
         # 2. Add PROVABGS MCMC samples (shape: [n_objects, 100, 13])
         mcmc_data = data["PROVABGS_MCMC"][:]
@@ -99,16 +99,16 @@ class DESIPROVABGSTransformer(BaseTransformer):
 
         # 4. Add log stellar mass
         columns["LOG_MSTAR"] = pa.array(
-            data["PROVABGS_LOGMSTAR_BF"][:].astype(np.float32)
+            data["PROVABGS_LOGMSTAR_BF"][:].astype(np.float32).reshape(-1)
         )
 
         # 5. Add float features
         for f in self.FLOAT_FEATURES:
-            columns[f] = pa.array(data[f][:].astype(np.float32).squeeze())
+            columns[f] = pa.array(data[f][:].astype(np.float32).reshape(-1))
 
         # 6. Add boolean features
         #for f in self.BOOL_FEATURES:
-        #    columns[f] = pa.array(data[f][:].astype(bool))
+        #    columns[f] = pa.array(data[f][:].astype(bool).reshape(-1))
 
         # 7. Add object_id
         columns["object_id"] = pa.array([str(oid) for oid in data["object_id"][:]])
