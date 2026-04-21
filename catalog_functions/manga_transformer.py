@@ -4,6 +4,7 @@ MaNGATransformer: Clean class-based transformation from HDF5 to PyArrow tables.
 
 import math
 import h5py
+import numpy as np
 import pyarrow as pa
 from hats_import.catalog.file_readers import InputReader
 from upath import UPath
@@ -151,6 +152,108 @@ class MaNGATransformer(BaseTransformer):
 
         return pa.schema(fields)
 
+    @staticmethod
+    def _decode_bytes_array(values):
+        if h5py.check_string_dtype(values.dtype) is not None:
+            return values.astype(str)
+        if values.dtype.kind == "S":
+            return np.char.decode(values, "utf-8")
+        return values
+
+    @staticmethod
+    def _ndarray_to_fixed_size_list(array: np.ndarray) -> pa.Array:
+        """Convert an N-D array to nested FixedSizeListArrays without Python lists."""
+        values = pa.array(array.reshape(-1))
+        for size in reversed(array.shape[1:]):
+            values = pa.FixedSizeListArray.from_arrays(values, size)
+        return values
+
+    @staticmethod
+    def _wrap_variable_list(values: pa.Array) -> pa.Array:
+        offsets = pa.array([0, len(values)], type=pa.int32())
+        return pa.ListArray.from_arrays(offsets, values)
+
+    @staticmethod
+    def _wrap_fixed_size_list(values: pa.Array, list_size: int) -> pa.Array:
+        return pa.FixedSizeListArray.from_arrays(values, list_size)
+
+    def _group_to_table(self, grp: h5py.Group) -> pa.Table:
+        schema = self.create_schema()
+
+        spaxels = grp["spaxels"][:]
+        images = grp["images"][:]
+        maps = grp["maps"][:]
+
+        spaxel_struct_type = schema.field("spaxels").type.value_type
+        image_struct_type = schema.field("images").type.value_type
+        map_struct_type = schema.field("maps").type.value_type
+
+        spaxel_struct = pa.StructArray.from_arrays(
+            [
+                self._ndarray_to_fixed_size_list(spaxels["flux"][:, np.newaxis, :]),
+                self._ndarray_to_fixed_size_list(spaxels["ivar"][:, np.newaxis, :]),
+                self._ndarray_to_fixed_size_list(spaxels["mask"][:, np.newaxis, :]),
+                self._ndarray_to_fixed_size_list(spaxels["lsf_sigma"][:, np.newaxis, :]),
+                self._ndarray_to_fixed_size_list(spaxels["lambda"][:, np.newaxis, :]),
+                pa.array(spaxels["x"], type=pa.int64()),
+                pa.array(spaxels["y"], type=pa.int64()),
+                pa.array(spaxels["spaxel_idx"], type=pa.int64()),
+                pa.array(self._decode_bytes_array(spaxels["flux_units"]), type=pa.string()),
+                pa.array(self._decode_bytes_array(spaxels["lambda_units"]), type=pa.string()),
+                pa.array(spaxels["skycoo_x"], type=pa.float32()),
+                pa.array(spaxels["skycoo_y"], type=pa.float32()),
+                pa.array(spaxels["ellcoo_r"], type=pa.float32()),
+                pa.array(spaxels["ellcoo_rre"], type=pa.float32()),
+                pa.array(spaxels["ellcoo_rkpc"], type=pa.float32()),
+                pa.array(spaxels["ellcoo_theta"], type=pa.float32()),
+                pa.array(self._decode_bytes_array(spaxels["skycoo_units"]), type=pa.string()),
+                pa.array(self._decode_bytes_array(spaxels["ellcoo_r_units"]), type=pa.string()),
+                pa.array(self._decode_bytes_array(spaxels["ellcoo_rre_units"]), type=pa.string()),
+                pa.array(self._decode_bytes_array(spaxels["ellcoo_rkpc_units"]), type=pa.string()),
+                pa.array(self._decode_bytes_array(spaxels["ellcoo_theta_units"]), type=pa.string()),
+            ],
+            fields=list(spaxel_struct_type),
+        )
+
+        image_struct = pa.StructArray.from_arrays(
+            [
+                pa.array(self._decode_bytes_array(images["image_band"]), type=pa.string()),
+                self._ndarray_to_fixed_size_list(images["image_array"]),
+                pa.array(self._decode_bytes_array(images["image_array_units"]), type=pa.string()),
+                self._ndarray_to_fixed_size_list(images["image_psf"]),
+                pa.array(self._decode_bytes_array(images["image_psf_units"]), type=pa.string()),
+                pa.array(images["image_scale"], type=pa.float32()),
+                pa.array(self._decode_bytes_array(images["image_scale_units"]), type=pa.string()),
+            ],
+            fields=list(image_struct_type),
+        )
+
+        map_struct = pa.StructArray.from_arrays(
+            [
+                pa.array(self._decode_bytes_array(maps["group"]), type=pa.string()),
+                pa.array(self._decode_bytes_array(maps["label"]), type=pa.string()),
+                self._ndarray_to_fixed_size_list(maps["array"]),
+                self._ndarray_to_fixed_size_list(maps["ivar"]),
+                self._ndarray_to_fixed_size_list(maps["mask"]),
+                pa.array(self._decode_bytes_array(maps["array_units"]), type=pa.string()),
+            ],
+            fields=list(map_struct_type),
+        )
+
+        arrays = [
+            pa.array([float(grp["z"][()])], type=pa.float64()),
+            pa.array([float(grp["spaxel_size"][()])], type=pa.float64()),
+            pa.array([decode_if_needed(grp["spaxel_size_unit"][()])], type=pa.string()),
+            self._wrap_fixed_size_list(spaxel_struct, self.SPAXELS_PER_ROW),
+            self._wrap_fixed_size_list(image_struct, len(self.IMAGE_FILTERS)),
+            pa.array([float(grp["ra"][()])], type=pa.float64()),
+            pa.array([float(grp["dec"][()])], type=pa.float64()),
+            self._wrap_variable_list(map_struct),
+            pa.array([decode_if_needed(grp["object_id"][()])], type=pa.string()),
+        ]
+
+        return pa.Table.from_arrays(arrays, schema=schema)
+
     def dataset_to_table(self, data):
         """
         Convert HDF5 dataset to PyArrow table.
@@ -161,175 +264,9 @@ class MaNGATransformer(BaseTransformer):
         Returns:
             pa.Table: Transformed Arrow table
         """
-        # MaNGA stores data in groups, one per galaxy
-        # We'll process each group and create table rows
-
-        all_rows = []
-
-        # Iterate over groups in HDF5 file
-        for key in data.keys():
-            grp = data[key]
-
-            row = {}
-
-            # 1. Add metadata
-            row["z"] = float(grp["z"][()])
-            row["spaxel_size"] = float(grp["spaxel_size"][()])
-            spaxel_size_unit = grp["spaxel_size_unit"][()]
-            if isinstance(spaxel_size_unit, bytes):
-                spaxel_size_unit = spaxel_size_unit.decode("utf-8")
-            row["spaxel_size_units"] = str(spaxel_size_unit)
-
-            # 2. Process spaxels
-            spaxels_list = []
-            for spaxel_data in grp["spaxels"][:]:
-                # Reshape 1D arrays to 2D (shape: 1 x spectrum_size) to match datasets Array2D
-                flux = spaxel_data[0]
-                if flux.ndim == 1:
-                    flux = flux.reshape(1, -1)
-
-                ivar = spaxel_data[1]
-                if ivar.ndim == 1:
-                    ivar = ivar.reshape(1, -1)
-
-                mask = spaxel_data[2]
-                if mask.ndim == 1:
-                    mask = mask.reshape(1, -1)
-
-                lsf = spaxel_data[3]
-                if lsf.ndim == 1:
-                    lsf = lsf.reshape(1, -1)
-
-                lmbda = spaxel_data[4]
-                if lmbda.ndim == 1:
-                    lmbda = lmbda.reshape(1, -1)
-
-                flux_units = spaxel_data[8]
-                if isinstance(flux_units, bytes):
-                    flux_units = flux_units.decode("utf-8")
-
-                lambda_units = spaxel_data[9]
-                if isinstance(lambda_units, bytes):
-                    lambda_units = lambda_units.decode("utf-8")
-
-                skycoo_units = spaxel_data[16]
-                if isinstance(skycoo_units, bytes):
-                    skycoo_units = skycoo_units.decode("utf-8")
-
-                ellcoo_r_units = spaxel_data[17]
-                if isinstance(ellcoo_r_units, bytes):
-                    ellcoo_r_units = ellcoo_r_units.decode("utf-8")
-
-                ellcoo_rre_units = spaxel_data[18]
-                if isinstance(ellcoo_rre_units, bytes):
-                    ellcoo_rre_units = ellcoo_rre_units.decode("utf-8")
-
-                ellcoo_rkpc_units = spaxel_data[19]
-                if isinstance(ellcoo_rkpc_units, bytes):
-                    ellcoo_rkpc_units = ellcoo_rkpc_units.decode("utf-8")
-
-                ellcoo_theta_units = spaxel_data[20]
-                if isinstance(ellcoo_theta_units, bytes):
-                    ellcoo_theta_units = ellcoo_theta_units.decode("utf-8")
-
-                spaxel = {
-                    "flux": flux.tolist(),
-                    "ivar": ivar.tolist(),
-                    "mask": mask.tolist(),
-                    "lsf": lsf.tolist(),
-                    "lambda": lmbda.tolist(),
-                    "x": int(spaxel_data[5]),
-                    "y": int(spaxel_data[6]),
-                    "spaxel_idx": int(spaxel_data[7]),
-                    "flux_units": str(flux_units),
-                    "lambda_units": str(lambda_units),
-                    "skycoo_x": float(spaxel_data[10]),
-                    "skycoo_y": float(spaxel_data[11]),
-                    "ellcoo_r": float(spaxel_data[12]),
-                    "ellcoo_rre": float(spaxel_data[13]),
-                    "ellcoo_rkpc": float(spaxel_data[14]),
-                    "ellcoo_theta": float(spaxel_data[15]),
-                    "skycoo_units": str(skycoo_units),
-                    "ellcoo_r_units": str(ellcoo_r_units),
-                    "ellcoo_rre_units": str(ellcoo_rre_units),
-                    "ellcoo_rkpc_units": str(ellcoo_rkpc_units),
-                    "ellcoo_theta_units": str(ellcoo_theta_units),
-                }
-                spaxels_list.append(spaxel)
-
-            row["spaxels"] = spaxels_list
-
-            # 3. Process images
-            images_list = []
-            for img_data in grp["images"][:]:
-                filt = img_data[0]
-                if isinstance(filt, bytes):
-                    filt = filt.decode("utf-8")
-
-                flux_units = img_data[2]
-                if isinstance(flux_units, bytes):
-                    flux_units = flux_units.decode("utf-8")
-
-                psf_units = img_data[4]
-                if isinstance(psf_units, bytes):
-                    psf_units = psf_units.decode("utf-8")
-
-                scale_units = img_data[6]
-                if isinstance(scale_units, bytes):
-                    scale_units = scale_units.decode("utf-8")
-
-                image = {
-                    "filter": str(filt),
-                    "flux": [row.tolist() for row in img_data[1]],
-                    "flux_units": str(flux_units),
-                    "psf": [row.tolist() for row in img_data[3]],
-                    "psf_units": str(psf_units),
-                    "scale": float(img_data[5]),
-                    "scale_units": str(scale_units),
-                }
-                images_list.append(image)
-
-            row["images"] = images_list
-
-            # 4. Process maps
-            maps_list = []
-            for map_data in grp["maps"][:]:
-                group = map_data[0]
-                if isinstance(group, bytes):
-                    group = group.decode("utf-8")
-
-                label = map_data[1]
-                if isinstance(label, bytes):
-                    label = label.decode("utf-8")
-
-                flux_units = map_data[5]
-                if isinstance(flux_units, bytes):
-                    flux_units = flux_units.decode("utf-8")
-
-                map_item = {
-                    "group": str(group),
-                    "label": str(label),
-                    "flux": [row.tolist() for row in map_data[2]],
-                    "ivar": [row.tolist() for row in map_data[3]],
-                    "mask": [row.tolist() for row in map_data[4]],
-                    "array_units": str(flux_units),
-                }
-                maps_list.append(map_item)
-
-            row["maps"] = maps_list
-
-            # 5. Add object_id
-            oid = grp["object_id"][()]
-            if isinstance(oid, bytes):
-                oid = oid.decode("utf-8")
-            row["object_id"] = str(oid)
-
-            for f in self.DOUBLE_FEATURES:
-                row[f] = float(grp[f][()])  # Read scalar value
-            all_rows.append(row)
-
-        # Convert to PyArrow table
-        schema = self.create_schema()
-        table = pa.Table.from_pylist(all_rows, schema=schema)
-
-        return table
+        tables = [self._group_to_table(data[key]) for key in data.keys()]
+        if not tables:
+            return self.create_schema().empty_table()
+        if len(tables) == 1:
+            return tables[0]
+        return pa.concat_tables(tables)

@@ -25,6 +25,3 @@ dev = [
 
 [tool.setuptools.packages.find]
 include = ["catalog_functions*", "verification*", "mmu*"]
-
-[tool.pytest.ini_options]
-pythonpath = ["."]

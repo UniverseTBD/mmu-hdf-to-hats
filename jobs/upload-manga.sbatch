@@ -34,6 +34,7 @@ fi
 
 srun uvx --from huggingface-hub hf upload-large-folder \
   --repo-type=dataset \
+  --exclude="*.fits" \
   --num-workers="${SLURM_CPUS_PER_TASK}" \
   --no-bars \
   hugging-science/mmu_manga \
