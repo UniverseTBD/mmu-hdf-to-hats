@@ -352,6 +352,108 @@ def test_compare_nested_passing():
     assert len(issues) == 0
 
 
+def test_compare_nested_bytes_and_strings_are_equal():
+    schema = pa.schema(
+        [
+            pa.field("object_id", pa.string()),
+            pa.field(
+                "images",
+                pa.list_(
+                    pa.struct(
+                        [
+                            pa.field("filter", pa.binary()),
+                            pa.field("flux", pa.list_(pa.list_(pa.float32()))),
+                            pa.field("flux_units", pa.binary()),
+                        ]
+                    )
+                ),
+            ),
+            pa.field("ra", pa.float64()),
+            pa.field("dec", pa.float64()),
+        ]
+    )
+    table1 = pa.Table.from_pylist(
+        [
+            {
+                "object_id": "a",
+                "images": [
+                    {
+                        "filter": b"g",
+                        "flux": [[1.0, 2.0], [3.0, 4.0]],
+                        "flux_units": b"unit",
+                    }
+                ],
+                "ra": 1.0,
+                "dec": 2.0,
+            }
+        ],
+        schema=schema,
+    )
+    table2 = pa.Table.from_pylist(
+        [
+            {
+                "object_id": "a",
+                "images": [
+                    {
+                        "filter": b"g",
+                        "flux": [[1.0, 2.0], [3.0, 4.0]],
+                        "flux_units": b"unit",
+                    }
+                ],
+                "ra": 1.0,
+                "dec": 2.0,
+            }
+        ],
+        schema=schema,
+    )
+    # Swap the nested string fields to decoded strings on one side.
+    table2 = pa.Table.from_pylist(
+        [
+            {
+                "object_id": "a",
+                "images": [
+                    {
+                        "filter": "g",
+                        "flux": [[1.0, 2.0], [3.0, 4.0]],
+                        "flux_units": "unit",
+                    }
+                ],
+                "ra": 1.0,
+                "dec": 2.0,
+            }
+        ]
+    )
+
+    issues = compare_tables(table1, table2, label1="Table 1", label2="Table 2")
+    assert len(issues) == 0
+
+
+def test_compare_nested_integer_widths_are_equal():
+    table1 = pa.table(
+        {
+            "object_id": pa.array(["a"]),
+            "spaxels": pa.array(
+                [[{"x": np.int8(1), "flux": [[1.0, np.nan]]}]]
+            ),
+            "ra": pa.array([1.0]),
+            "dec": pa.array([2.0]),
+        }
+    )
+    table2 = pa.table(
+        {
+            "object_id": pa.array(["a"]),
+            "spaxels": pa.array(
+                [[{"x": np.int64(1), "flux": [[1.0, np.nan]]}]]
+            ),
+            "ra": pa.array([1.0]),
+            "dec": pa.array([2.0]),
+        }
+    )
+
+    issues = compare_tables(table1, table2, label1="Table 1", label2="Table 2")
+    assert len(issues) == 0
+
+
 def test_compare_nested_vs_unnested():
     nested_col = pa.table(
         {
