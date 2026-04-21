@@ -12,19 +12,13 @@
 #SBATCH --error=/mnt/home/thehir/projects/george-mmu-hdf5-to-hats/slurm-logs/slurm-%j.stderr
 #SBATCH --chdir=/mnt/home/thehir/projects/george-mmu-hdf5-to-hats
 
-# NOTE: it is recommended to set HF_XET_CACHE to local storage rather than
-# running on ceph. The default behaviour is to cache at a .cache/huggingface
-# directory inside the directory to be uploaded, and in this case that will be
-# on a ceph filesystem. However, setting HF_XET_CACHE to a local directory will
-# prevent resuming the upload if the job is resumed on a different node, or the
-# cache is cleared, therefore we use the default cache location.
-# export HF_XET_CACHE="${TMPDIR:-/tmp}/hf_xet_cache"
-# mkdir -p "$HF_XET_CACHE"
-
+# NOTE: keep the Xet cache outside the uploaded collection. Otherwise the upload
+# job can end up recursively uploading its own cache content.
 UPLOAD_DIR=/mnt/ceph/users/polymathic/manga-mmu-hdf5-to-hats
 
-export HF_XET_CACHE="${UPLOAD_DIR}/.cache/huggingface"
+export HF_XET_CACHE="/mnt/ceph/users/polymathic/tmp-hf-cache-manga-hf-upload"
 export HF_XET_HIGH_PERFORMANCE=1
+mkdir -p "$HF_XET_CACHE"
 
 # Opt-in wipe of HF_XET_CACHE before running. Enable with `sbatch --export=ALL,CLEAN=1 upload-manga.sbatch`.
 if [ "${CLEAN:-0}" = "1" ]; then
@@ -35,6 +29,8 @@ fi
 srun uvx --from huggingface-hub hf upload-large-folder \
   --repo-type=dataset \
   --exclude="*.fits" \
+  --exclude=".cache/**" \
+  --exclude="**/.cache/**" \
   --num-workers="${SLURM_CPUS_PER_TASK}" \
   --no-bars \
   hugging-science/mmu_manga \
