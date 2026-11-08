@@ -59,10 +59,16 @@ class VIPERSTransformer(BaseTransformer):
 
         # 1. Create spectrum struct column
         # Note: VIPERS uses spectrum_flux * 1e17 for normalization
-        # and 1/(spectrum_noise * 1e34) for ivar
+        # spectrum_noise is 1-sigma error in flux units (erg/s/cm2/A).
+        # Normalizing noise by 1e17 gives noise_norm = spectrum_noise * 1e17.
+        # Inverse variance is 1 / (noise_norm ** 2) = 1 / ((spectrum_noise * 1e17) ** 2).
         spectrum_flux = data["spectrum_flux"][:] * 1e17
         spectrum_noise = data["spectrum_noise"][:]
-        spectrum_ivar = 1.0 / (spectrum_noise * 1e34)
+        spectrum_ivar = np.where(
+            spectrum_noise > 0,
+            1.0 / ((spectrum_noise * 1e17) ** 2),
+            0.0,
+        )
         spectrum_lambda = data["spectrum_wave"][:]
         spectrum_mask = data["spectrum_mask"][:]
 

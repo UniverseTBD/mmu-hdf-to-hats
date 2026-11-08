@@ -155,10 +155,17 @@ class VIPERS(datasets.GeneratorBasedBuilder):
                     # Extract the indices of requested ids in the catalog
                     i = sort_index[np.searchsorted(sorted_ids, k)]
 
+                    noise_val = data["spectrum_noise"][i]
+                    ivar_val = np.where(
+                        noise_val > 0,
+                        1.0 / ((noise_val * 1e17) ** 2),
+                        0.0,
+                    ).astype(np.float32)
+
                     example = {
                         "spectrum": {
-                            "flux": data["spectrum_flux"][i] * 1e17,  # normalize
-                            "ivar": 1 / (data["spectrum_noise"][i] * 1e34),  # normalize
+                            "flux": (data["spectrum_flux"][i] * 1e17).astype(np.float32),  # normalize
+                            "ivar": ivar_val,  # 1 / (noise * 1e17)^2
                             "lambda": data["spectrum_wave"][i],
                             "mask": data["spectrum_mask"][i],
                         }
