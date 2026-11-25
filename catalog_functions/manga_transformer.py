@@ -2,9 +2,67 @@
 MaNGATransformer: Clean class-based transformation from HDF5 to PyArrow tables.
 """
 
+import math
+import h5py
 import pyarrow as pa
 import numpy as np
+from hats_import.catalog.file_readers import InputReader
+from upath import UPath
 from catalog_functions.utils import BaseTransformer
+
+
+def decode_if_needed(value):
+    if isinstance(value, bytes):
+        return value.decode("utf-8")
+    return value
+
+
+class MangaGroupReader(InputReader):
+    """Reader for MaNGA HDF5 files with one object group per top-level key."""
+
+    def __init__(self, chunk_mb: float, transformer):
+        super().__init__()
+        self.chunk_bytes = chunk_mb * 1024 * 1024
+        self.transformer = transformer
+
+    @staticmethod
+    def _group_value(group: h5py.Group, column: str):
+        candidates = (column, column.upper())
+        for candidate in candidates:
+            if candidate in group:
+                return decode_if_needed(group[candidate][()])
+        raise KeyError(
+            f"Column '{column}' not found in group '{group.name}'. "
+            f"Available columns: {list(group.keys())}"
+        )
+
+    def _group_name_chunks(self, upath: UPath, h5_file: h5py.File) -> list[list[str]]:
+        group_names = list(h5_file.keys())
+        if not group_names:
+            return []
+
+        num_chunks = max(1, int(math.ceil(upath.stat().st_size / self.chunk_bytes)))
+        chunk_size = max(1, int(math.ceil(len(group_names) / num_chunks)))
+        return [
+            group_names[start : start + chunk_size]
+            for start in range(0, len(group_names), chunk_size)
+        ]
+
+    def read(self, input_file: str, read_columns: list[str] | None = None):
+        upath = UPath(input_file)
+        with upath.open("rb") as fh, h5py.File(fh) as h5_file:
+            for group_names in self._group_name_chunks(upath, h5_file):
+                if read_columns is not None:
+                    scalar_rows: dict[str, list] = {column: [] for column in read_columns}
+                    for group_name in group_names:
+                        group = h5_file[group_name]
+                        for column in read_columns:
+                            scalar_rows[column].append(self._group_value(group, column))
+                    yield pa.table(scalar_rows)
+                    continue
+
+                grouped_data = {group_name: h5_file[group_name] for group_name in group_names}
+                yield self.transformer.dataset_to_table(grouped_data)
 
 
 class MaNGATransformer(BaseTransformer):
