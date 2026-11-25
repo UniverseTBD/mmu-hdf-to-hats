@@ -17,6 +17,7 @@ from hats_import.pipeline import pipeline_with_client
 from upath import UPath
 
 import catalog_functions
+from catalog_functions.manga_transformer import MangaGroupReader
 from catalog_functions.utils import BaseTransformer
 
 LOGGER = logging.getLogger(__name__)
@@ -104,10 +105,48 @@ def parse_args(argv):
         help="Enable debug mode (single worker, single thread, no separate processes)",
     )
     parser.add_argument(
+        "--workers",
+        default=None,
+        type=int,
+        help="Number of Dask workers to use in production mode. Defaults to min(8, cpu_count()). Ignored with --debug.",
+    )
+    parser.add_argument(
+        "--memory-limit",
+        default="48G",
+        type=str,
+        help="Per-worker memory limit passed to Dask (e.g. '48G', '96G'). Ignored with --debug.",
+    )
+    parser.add_argument(
+        "--max-bytes",
+        default=None,
+        type=int,
+        help="Max in-memory bytes per HATS pixel partition. "
+             "When set, overrides --max-rows (hats_import uses "
+             "threshold_mode='mem_size')."
+    )
+    parser.add_argument(
         "--row-group-size",
         default=None,
         type=int,
         help="Row group size for parquet files. If not specified, uses PyArrow's default (min of table size and 1M rows). For image data, try 50-250.",
+    )
+    parser.add_argument(
+        "--margin-threshold",
+        default=10.0,
+        type=float,
+        help="Margin cache threshold in arcseconds. Pass a non-positive value to disable the margin cache.",
+    )
+    parser.add_argument(
+        "--resume",
+        default=True,
+        action=argparse.BooleanOptionalAction,
+        help="Resume a previous run from intermediate state in --tmp-dir. Pass --no-resume to start from scratch (required when changing --highest-healpix-order).",
+    )
+    parser.add_argument(
+        "--highest-healpix-order",
+        default=None,
+        type=int,
+        help="Highest healpix order for partitioning. Defaults to hats-import's default (10).",
     )
     return parser.parse_args(argv)
 
@@ -233,23 +272,39 @@ def main(argv=None):
     if cmd_args.row_group_size is not None:
         row_group_kwargs['num_rows'] = cmd_args.row_group_size
 
+    if cmd_args.transformer == "manga":
+        file_reader = MangaGroupReader(
+            chunk_mb=128, transformer=transformer_klass()
+        )
+    else:
+        file_reader = MMUReader(chunk_mb=128, transform_klass=transformer_klass)
+
+    catalog_kwargs = dict(
+        input_file_list=input_files,
+        file_reader=file_reader,
+        ra_column=cmd_args.ra,
+        dec_column=cmd_args.dec,
+        pixel_threshold=cmd_args.max_rows,
+        byte_pixel_threshold=cmd_args.max_bytes,
+        lowest_healpix_order=4,
+        row_group_kwargs=row_group_kwargs,
+        resume=cmd_args.resume,
+    )
+    if cmd_args.highest_healpix_order is not None:
+        catalog_kwargs["highest_healpix_order"] = cmd_args.highest_healpix_order
+
     import_args = (
         CollectionArguments(
             output_artifact_name=cmd_args.name,
             output_path=cmd_args.output,
             tmp_dir=cmd_args.tmp_dir,
         )
-        .catalog(
-            input_file_list=input_files,
-            file_reader=MMUReader(chunk_mb=128, transform_klass=transformer_klass),
-            ra_column=cmd_args.ra,
-            dec_column=cmd_args.dec,
-            pixel_threshold=cmd_args.max_rows,
-            lowest_healpix_order=4,
-            row_group_kwargs=row_group_kwargs,
-        )
-        .add_margin(margin_threshold=10.0, is_default=True)
+        .catalog(**catalog_kwargs)
     )
+    if cmd_args.margin_threshold > 0:
+        import_args = import_args.add_margin(
+            margin_threshold=cmd_args.margin_threshold, is_default=True
+        )
 
     # Choose Client configuration based on debug flag
     if cmd_args.debug:
@@ -260,7 +315,8 @@ def main(argv=None):
         )
     else:
         # Production mode: use multiple workers
-        client_kwargs = {"n_workers": min(8, cpu_count()), "threads_per_worker": 1, "memory_limit": "48G"}
+        n_workers = cmd_args.workers or min(8, cpu_count())
+        client_kwargs = {"n_workers": min(n_workers, cpu_count()), "threads_per_worker": 1, "memory_limit": cmd_args.memory_limit}
         LOGGER.info(
             f"Running in PRODUCTION mode ({client_kwargs['n_workers']} workers)"
         )

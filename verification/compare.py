@@ -1,5 +1,4 @@
 import pyarrow as pa
-import pyarrow.compute as pc
 import pyarrow.parquet as pq
 from datasets import load_from_disk
 import warnings
@@ -15,6 +14,71 @@ class ComparisonIssue(TypedDict):
     column: str | None
     samples: list | None
     table: str | None
+
+
+def normalize_nested_value(value):
+    """Normalize nested values for comparison across Arrow/datasets representations."""
+    if isinstance(value, bytes):
+        return value.decode("utf-8")
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, list):
+        return [normalize_nested_value(item) for item in value]
+    if isinstance(value, dict):
+        return {key: normalize_nested_value(val) for key, val in value.items()}
+    return value
+
+
+def values_equal(left, right):
+    left = normalize_nested_value(left)
+    right = normalize_nested_value(right)
+
+    if isinstance(left, float) and isinstance(right, float):
+        if np.isnan(left) and np.isnan(right):
+            return True
+        return np.isclose(left, right, rtol=1e-5, atol=1e-8, equal_nan=True)
+
+    if isinstance(left, list) and isinstance(right, list):
+        return len(left) == len(right) and all(
+            values_equal(l_item, r_item) for l_item, r_item in zip(left, right)
+        )
+
+    if isinstance(left, dict) and isinstance(right, dict):
+        return left.keys() == right.keys() and all(
+            values_equal(left[key], right[key]) for key in left
+        )
+
+    return left == right
+
+
+def arrays_equal_by_value(arr1, arr2):
+    """Compare Arrow arrays by value, ignoring representation-only differences."""
+    type1 = arr1.type
+    type2 = arr2.type
+
+    if hasattr(type1, "storage_type"):
+        arr1 = arr1.cast(type1.storage_type)
+        type1 = arr1.type
+    if hasattr(type2, "storage_type"):
+        arr2 = arr2.cast(type2.storage_type)
+        type2 = arr2.type
+
+    if arr1.equals(arr2):
+        return True
+
+    if pa.types.is_integer(type1) and pa.types.is_integer(type2):
+        return np.array_equal(arr1.cast(pa.int64()).to_numpy(), arr2.cast(pa.int64()).to_numpy())
+
+    if pa.types.is_floating(type1) and pa.types.is_floating(type2):
+        return np.allclose(arr1.to_numpy(), arr2.to_numpy(), rtol=1e-5, atol=1e-8, equal_nan=True)
+
+    if pa.types.is_binary(type1) or pa.types.is_string(type1) or pa.types.is_binary(type2) or pa.types.is_string(type2):
+        return [normalize_nested_value(v) for v in arr1.to_pylist()] == [normalize_nested_value(v) for v in arr2.to_pylist()]
+
+    if pa.types.is_nested(type1) and pa.types.is_nested(type2):
+        return values_equal(arr1.to_pylist(), arr2.to_pylist())
+
+    return values_equal(arr1.to_pylist(), arr2.to_pylist())
 
 
 def normalize_coordinate_columns(table, table_name):
@@ -151,9 +215,25 @@ def truncate_long_arrays(obj, max_items=5):
         return obj
 
 
+def build_mismatch_samples(left_values, right_values, mismatch_number=3):
+    mismatch_indices = [
+        i
+        for i in range(min(len(left_values), len(right_values)))
+        if not values_equal(left_values[i], right_values[i])
+    ]
+    return [
+        {
+            "index": i,
+            "left": truncate_long_arrays(normalize_nested_value(left_values[i])),
+            "right": truncate_long_arrays(normalize_nested_value(right_values[i])),
+        }
+        for i in mismatch_indices[:mismatch_number]
+    ]
+
+
 def compare_nested_list_column(col1, col2, col_name, col_type):
     """
-    Compare nested list columns using PyArrow native operations.
+    Compare nested list columns by normalized semantic value.
 
     Returns:
         dict: {
@@ -162,163 +242,41 @@ def compare_nested_list_column(col1, col2, col_name, col_type):
         }
         If the column has no struct fields, returns a single key '' with the overall comparison.
     """
-    # if col_name == "image.array":
-    #     breakpoint()
-    # If not a list or not a struct, do simple comparison
-    if not pa.types.is_list(col_type):
-        if col1.equals(col2):
-            return {"": (True, [])}
+    left_rows = normalize_nested_value(col1.to_pylist())
+    right_rows = normalize_nested_value(col2.to_pylist())
 
-        list1 = col1[:5].to_pylist()
-        list2 = col2[:5].to_pylist()
-        mismatch_indices = [
-            i for i in range(min(len(list1), len(list2))) if list1[i] != list2[i]
-        ]
-        sample_data = [
-            {
-                "index": i,
-                "left": truncate_long_arrays(list1[i]),
-                "right": truncate_long_arrays(list2[i]),
-            }
-            for i in mismatch_indices[:3]
-        ]
-        return {"": (False, sample_data)}
+    if values_equal(left_rows, right_rows):
+        return {"": (True, [])}
+
+    if not pa.types.is_list(col_type):
+        return {"": (False, build_mismatch_samples(left_rows, right_rows))}
 
     value_type = col_type.value_type
+    if hasattr(value_type, "storage_type"):
+        value_type = value_type.storage_type
 
     if not pa.types.is_struct(value_type):
-        # Non-struct list, do simple comparison
-        # Handle extension types by casting to storage type
-        col1_compare = col1
-        col2_compare = col2
+        return {"": (False, build_mismatch_samples(left_rows, right_rows))}
 
-        # Check if the element type (value_type) is an extension type
-        col1_value_type = col_type.value_type
-        col2_value_type = col2.type.value_type
-
-        # Check for type mismatch (one extension, one not)
-        has_ext1 = hasattr(col1_value_type, "storage_type")
-        has_ext2 = hasattr(col2_value_type, "storage_type")
-
-        if has_ext1 != has_ext2:
-            warnings.warn(
-                f"Extension type mismatch for column '{col_name}': "
-                f"left={col1_value_type}, right={col2_value_type}. "
-                f"Casting to storage types for value comparison."
-            )
-            if has_ext1:
-                storage_type1 = pa.list_(col1_value_type.storage_type)
-                col1_compare = col1.cast(storage_type1)
-            if has_ext2:
-                storage_type2 = pa.list_(col2_value_type.storage_type)
-                col2_compare = col2.cast(storage_type2)
-
-        # If both or neither have extension types, try to compare
-        if has_ext1:
-            # Cast list<extension> to list<storage>
-            storage_type1 = pa.list_(col1_value_type.storage_type)
-            col1_compare = col1.cast(storage_type1)
-        if has_ext2:
-            storage_type2 = pa.list_(col2_value_type.storage_type)
-            col2_compare = col2.cast(storage_type2)
-
-        # Try direct equality first
-        if col1_compare.equals(col2_compare):
-            return {"": (True, [])}
-
-        # For numeric types, use NaN-aware comparison
-        # Check if the value type is a numeric type that might contain NaN
-        is_float_type = pa.types.is_floating(col1_value_type) or pa.types.is_floating(col2_value_type)
-
-        if is_float_type:
-            # Convert to numpy for NaN-aware comparison
-            try:
-                import numpy as np
-                # Flatten both columns to 1D arrays for comparison
-                arr1_flat = pc.list_flatten(col1_compare).to_numpy()
-                arr2_flat = pc.list_flatten(col2_compare).to_numpy()
-
-                if np.allclose(arr1_flat, arr2_flat, rtol=1e-5, atol=1e-8, equal_nan=True):
-                    return {"": (True, [])}
-            except Exception:
-                pass  # Fall through to Python list comparison
-
-        list1 = col1[:5].to_pylist()
-        list2 = col2[:5].to_pylist()
-        mismatch_indices = [
-            i for i in range(min(len(list1), len(list2))) if list1[i] != list2[i]
-        ]
-        sample_data = [
-            {
-                "index": i,
-                "left": truncate_long_arrays(list1[i]),
-                "right": truncate_long_arrays(list2[i]),
-            }
-            for i in mismatch_indices[:3]
-        ]
-        return {"": (False, sample_data)}
-
-    # Compare each struct field separately using PyArrow native ops
     field_results = {}
-
     for field in value_type:
         field_name = field.name
+        field_left = [
+            [item.get(field_name) for item in row] if row is not None else None
+            for row in left_rows
+        ]
+        field_right = [
+            [item.get(field_name) for item in row] if row is not None else None
+            for row in right_rows
+        ]
 
-        try:
-            # Extract field from nested struct using PyArrow compute
-            flattened1 = pc.list_flatten(col1)
-            flattened2 = pc.list_flatten(col2)
-
-            field1 = pc.struct_field(flattened1, field_name)
-            field2 = pc.struct_field(flattened2, field_name)
-
-            # Handle extension types by casting to storage type for comparison
-            type1 = field1.type
-            type2 = field2.type
-
-            # Check if either is an extension type
-            if hasattr(type1, "storage_type") or hasattr(type2, "storage_type"):
-                # Cast both to storage type to compare underlying values
-                if hasattr(type1, "storage_type"):
-                    field1 = field1.cast(type1.storage_type)
-                if hasattr(type2, "storage_type"):
-                    field2 = field2.cast(type2.storage_type)
-
-            if field1.equals(field2):
-                field_results[field_name] = (True, [])
-            else:
-                # Convert only first 5 rows to Python for samples
-                # Need to extract this field from each row
-                col1_slice = col1[:5]
-                col2_slice = col2[:5]
-
-                flattened1_slice = pc.list_flatten(col1_slice)
-                flattened2_slice = pc.list_flatten(col2_slice)
-
-                field1_slice = pc.struct_field(flattened1_slice, field_name).to_pylist()
-                field2_slice = pc.struct_field(flattened2_slice, field_name).to_pylist()
-
-                # Find mismatches
-                mismatch_indices = [
-                    i
-                    for i in range(min(len(field1_slice), len(field2_slice)))
-                    if field1_slice[i] != field2_slice[i]
-                ]
-
-                sample_data = [
-                    {
-                        "index": i,
-                        "left": truncate_long_arrays(field1_slice[i]),
-                        "right": truncate_long_arrays(field2_slice[i]),
-                    }
-                    for i in mismatch_indices[:3]
-                ]
-
-                field_results[field_name] = (False, sample_data)
-
-        except Exception as e:
-            # If we can't extract the field, mark as mismatch
-            field_results[field_name] = (False, [{"error": str(e)}])
+        if values_equal(field_left, field_right):
+            field_results[field_name] = (True, [])
+        else:
+            field_results[field_name] = (
+                False,
+                build_mismatch_samples(field_left, field_right),
+            )
 
     return field_results
 
